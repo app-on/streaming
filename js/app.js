@@ -10,13 +10,12 @@ var config = () => {
     ),
 
     url: {
-      // img: (url = "") =>
-      //   `https://img.victor01sp.com/index.php?url=${encodeURIComponent(url)}`,
+      img: (url = "") =>
+        `https://img.vniox.com/index.php?url=${encodeURIComponent(url)}`,
       // fetch: (url = "") =>
-      //   `https://api-fetch.victor01sp.com/get.php?url=${encodeURIComponent(
+      //   `https://fetch.victor01sp.com/get.php?url=${encodeURIComponent(
       //     url
       //   )}`,
-      img: (url = "") => url,
       fetch: (url = "") => url,
       rr: (path = "") => `https://app.victor01sp.com/rr` + path,
     },
@@ -1950,6 +1949,11 @@ var anime = () => {
       Data: defineVal([]),
     },
     functions: {},
+    url: {
+      fetch: (url) => {
+        return `https://fetch.vniox.com/get.php?url=${encodeURIComponent(url)}`;
+      },
+    },
   };
 
   const $element = createNodeElement(`
@@ -2088,15 +2092,13 @@ var anime = () => {
       } else if (
         $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
       ) {
-        url = useApp.url.fetch(
-          `https://www3.animeflv.net/browse?order=default&page=${page}&genre[]=${$elements.buttonsFocus.getAttribute(
-            "data-gender"
-          )}`
-        );
+        url = `https://www3.animeflv.net/browse?order=default&page=${page}&genre[]=${$elements.buttonsFocus.getAttribute(
+          "data-gender"
+        )}`;
       } else {
-        url = useApp.url.fetch(`https://www3.animeflv.net/browse?page=${page}`);
+        url = `https://www3.animeflv.net/browse?page=${page}`;
       }
-      fetch(url)
+      fetch(useThis.url.fetch(url))
         .then((res) => res.text())
         .then((text) => {
           if (text.trim() == "") {
@@ -2108,15 +2110,25 @@ var anime = () => {
           const $text = document.createElement("div");
           $text.innerHTML = text;
 
+          // console.log($text.querySelector("div.TbCnAnmFlv ul.List-Animes"));
+          // console.log($text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02"));
+          // $text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02").children
+
           const lis = Array.from(
-            $text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02").children
+            (
+              $text.querySelector("div.TbCnAnmFlv ul.List-Animes") ||
+              $text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02")
+            ).children
           );
 
           const array = lis.map((li) => {
             return {
               href: li.querySelector("a").getAttribute("href"),
               title: li.querySelector(".Title").textContent,
-              poster: li.querySelector("img").src,
+              poster: `https://animeflv.net/${li
+                .querySelector("img")
+                .getAttribute("src")
+                .replace("https://animeflv.net/", "")}`,
               type: li.querySelector(".Type").textContent,
             };
           });
@@ -2174,6 +2186,11 @@ var animeId = () => {
     functions: {},
     value: {
       video: null,
+    },
+    url: {
+      fetch: (url) => {
+        return `https://fetch.vniox.com/get.php?url=${encodeURIComponent(url)}`;
+      },
     },
   };
 
@@ -2365,12 +2382,14 @@ var animeId = () => {
 
   useThis.functions.dataLoad = () => {
     fetch(
-      useApp.url.fetch(`https://www3.animeflv.net/anime/${useThis.params.id}`)
+      useThis.url.fetch(`https://www3.animeflv.net/anime/${useThis.params.id}`)
     )
       .then((res) => res.text())
       .then((text) => {
         const $text = document.createElement("div");
         $text.innerHTML = text;
+
+        console.log($text.outerHTML);
 
         Array.from($text.querySelectorAll("script")).forEach((script) => {
           if (script.innerHTML.includes("var anime_info =")) {
