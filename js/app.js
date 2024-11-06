@@ -4259,6 +4259,91 @@ var theme = () => {
   return document.createTextNode("");
 };
 
+class ElementMakeDrag {
+  constructor(element) {
+    this._element = element;
+    this._events = {};
+  }
+
+  on = (type, callback) => {
+    this._events[type] = callback;
+  };
+
+  start = () => {
+    let draggable = this._element;
+    let element = this._element;
+
+    const startDragging = (e) => {
+      if (typeof this._events.start == "function") {
+        this._events.start({
+          e,
+          target: draggable,
+        });
+      }
+
+      if (e.type === "mousedown") {
+        e.preventDefault();
+      }
+
+      element.addEventListener("touchmove", drag, { passive: false });
+      element.addEventListener("touchend", stopDragging);
+      element.addEventListener("mousemove", drag);
+      element.addEventListener("mouseup", stopDragging);
+      element.addEventListener("mouseleave", stopDragging);
+    };
+
+    const drag = (e) => {
+      if (typeof this._events.move == "function") {
+        this._events.move({
+          e,
+          target: draggable,
+        });
+      }
+    };
+
+    const stopDragging = (e) => {
+      // allowtouchstart = true;
+      if (typeof this._events.end == "function") {
+        this._events.end({
+          e,
+          target: draggable,
+        });
+      }
+
+      if (e.touches && e.touches.length > 0) return;
+      element.removeEventListener("touchmove", drag);
+      element.removeEventListener("touchend", stopDragging);
+      element.removeEventListener("mousemove", drag);
+      element.removeEventListener("mouseup", stopDragging);
+      element.removeEventListener("mouseleave", stopDragging);
+    };
+
+    draggable.addEventListener("touchstart", startDragging, {
+      passive: false,
+    });
+    draggable.addEventListener("mousedown", startDragging);
+  };
+}
+
+function calculateNewPosition(
+  top,
+  left,
+  width,
+  height,
+  newWidth,
+  newHeight
+) {
+  // Calcula la diferencia en tamaño para cada eje
+  const deltaX = (newWidth - width) / 2;
+  const deltaY = (newHeight - height) / 2;
+
+  // Ajusta las posiciones de left y top para mantener el centro
+  const newLeft = left - deltaX;
+  const newTop = top - deltaY;
+
+  return { top: newTop, left: newLeft };
+}
+
 var footerVideoPlayer = () => {
   const useApp = window.dataApp;
   const useThis = {
@@ -4298,6 +4383,7 @@ var footerVideoPlayer = () => {
             <div class="div_rFbZYz7">
                 <div id="elementVideo" class="div_DFHkIAJ pointer-on"></div>
             </div>
+            
         </footer>
   `);
 
@@ -4379,49 +4465,8 @@ var footerVideoPlayer = () => {
 
   $elements.elementVideo.append(useApp.mediaPlayer.element());
 
-  // useThis.classes.divPreview = new ElementMakeDrag($elements.divPreview);
-
-  // useThis.classes.divPreview.on("move", (data) => {
-  //   const top = data.target.offsetHeight / 2;
-  //   const left = data.target.offsetWidth / 2;
-
-  //   const x = Math.max(
-  //     top * -1,
-  //     Math.min(
-  //       data.xy.current.y,
-  //       window.innerHeight - data.target.offsetHeight + top
-  //     )
-  //   );
-
-  //   const y = Math.max(
-  //     left * -1,
-  //     Math.min(
-  //       data.xy.current.x,
-  //       window.innerWidth - data.target.offsetWidth + left
-  //     )
-  //   );
-
-  //   data.target.style.top = `${x}px`;
-  //   data.target.style.left = `${y}px`;
-
-  //   data.target.style.right = "initial";
-  //   data.target.style.bottom = "initial";
-
-  //   $elements.divPreviewContent.style.pointerEvents = "none";
-  // });
-
-  // useThis.classes.divPreview.on("end", () => {
-  //   $elements.divPreviewContent.style.pointerEvents = "";
-  // });
-
-  // useThis.classes.divPreview.start();
-
-  // $elements.divPrueba.addEventListener("click", () => {
-  //   console.log("hola");
-  // });
-
   const function_pmgnvcdirebja = () => {
-    const elementMakeDrag2 = new ElementMakeDrag2($elements.divPrueba);
+    const elementMakeDrag = new ElementMakeDrag($elements.divPrueba);
     const draggable = $elements.divPreview;
 
     const datapinch = {
@@ -4445,9 +4490,7 @@ var footerVideoPlayer = () => {
       },
     };
 
-    let resizemove = false;
-
-    elementMakeDrag2.on("start", ({ e, target }) => {
+    elementMakeDrag.on("start", ({ e, target }) => {
       target.style.pointerEvents = "";
 
       if (e.touches) {
@@ -4481,12 +4524,9 @@ var footerVideoPlayer = () => {
         }
       }
     });
-    elementMakeDrag2.on("move", ({ e }) => {
+    elementMakeDrag.on("move", ({ e }) => {
       if (datamove.allow) {
         $elements.divPreviewContent.style.pointerEvents = "none";
-
-        resizemove = true;
-        const datatarget = draggable;
 
         if (e.type === "touchmove") {
           e.preventDefault();
@@ -4501,18 +4541,20 @@ var footerVideoPlayer = () => {
               e.touches[index].clientY - datamove.xy.initial.y;
           }
         } else {
+          console.log(draggable.getBoundingClientRect());
+          console.log(e.clientX);
           datamove.xy.current.x = e.clientX - datamove.xy.initial.x;
           datamove.xy.current.y = e.clientY - datamove.xy.initial.y;
         }
 
-        const top = datatarget.offsetHeight / 2;
-        const left = datatarget.offsetWidth / 2;
+        const top = draggable.offsetHeight / 2;
+        const left = draggable.offsetWidth / 2;
 
         const y = Math.max(
           top * -1,
           Math.min(
             datamove.xy.current.y,
-            window.innerHeight - datatarget.offsetHeight + top
+            window.innerHeight - draggable.offsetHeight + top
           )
         );
 
@@ -4520,32 +4562,29 @@ var footerVideoPlayer = () => {
           left * -1,
           Math.min(
             datamove.xy.current.x,
-            window.innerWidth - datatarget.offsetWidth + left
+            window.innerWidth - draggable.offsetWidth + left
           )
         );
 
-        datatarget.style.top = `${y}px`;
-        datatarget.style.left = `${x}px`;
+        draggable.style.top = `${y}px`;
+        draggable.style.left = `${x}px`;
 
-        datatarget.style.right = "initial";
-        datatarget.style.bottom = "initial";
+        draggable.style.right = "initial";
+        draggable.style.bottom = "initial";
       }
 
       if (datapinch.allow) {
         if (e.touches && e.touches.length === 2) {
-          const datatarget = draggable;
           const currentdistance = Math.hypot(
             e.touches[0].clientX - e.touches[1].clientX,
             e.touches[0].clientY - e.touches[1].clientY
           );
 
-          //   if (parseInt(imagen.style.width) != 500) {}
-
           if (
             (currentdistance > datapinch.lastdistance &&
-              parseInt(datatarget.style.width) == 700) ||
+              parseInt(draggable.style.width) == 700) ||
             (currentdistance < datapinch.lastdistance &&
-              parseInt(datatarget.style.width) == 150)
+              parseInt(draggable.style.width) == 150)
           )
             return (datapinch.lastdistance = currentdistance);
 
@@ -4554,21 +4593,21 @@ var footerVideoPlayer = () => {
 
           datapinch.lastdistance = currentdistance;
 
-          if (!datatarget.getAttribute("data-width")) {
-            datatarget.setAttribute("data-width", datatarget.offsetWidth);
+          if (!draggable.getAttribute("data-width")) {
+            draggable.setAttribute("data-width", draggable.offsetWidth);
           }
 
-          datatarget.style.width = `${Math.max(
+          draggable.style.width = `${Math.max(
             150,
             Math.min(
-              parseInt(datatarget.getAttribute("data-width")) * datapinch.scale,
+              parseInt(draggable.getAttribute("data-width")) * datapinch.scale,
               700
             )
           )}px`;
         }
       }
     });
-    elementMakeDrag2.on("end", ({ e, target }) => {
+    elementMakeDrag.on("end", ({ e, target }) => {
       if (datamove.allow && ((e.touches && !e.touches.length) || !e.touches)) {
         datamove.allow = false;
       }
@@ -4584,26 +4623,41 @@ var footerVideoPlayer = () => {
     });
 
     draggable.addEventListener("wheel", (e) => {
-      const datatarget = draggable;
+      const draggablegetBoundingClientRect = draggable.getBoundingClientRect();
 
-      datatarget.style.width = `${Math.max(
+      draggable.style.width = `${Math.max(
         150,
-        Math.min(datatarget.offsetWidth - (e.deltaY > 0 ? 10 : -10), 700)
+        Math.min(draggable.offsetWidth - (e.deltaY > 0 ? 10 : -10), 1000)
       )}px`;
+
+      const draggablegetBoundingClientRect2 = draggable.getBoundingClientRect();
+
+      const datasss = calculateNewPosition(
+        draggablegetBoundingClientRect.top,
+        draggablegetBoundingClientRect.left,
+        draggablegetBoundingClientRect.width,
+        draggablegetBoundingClientRect.height,
+        draggablegetBoundingClientRect2.width,
+        draggablegetBoundingClientRect2.height
+      );
+
+      draggable.style.left = `${datasss.left}px`;
+      draggable.style.top = `${datasss.top}px`;
+
+      draggable.style.right = "initial";
+      draggable.style.bottom = "initial";
     });
 
     addEventListener("resize", () => {
-      if (resizemove) {
-        resizemove = false;
-        const datatarget = $elements.divPreview;
-        datatarget.style.top = "initial";
-        datatarget.style.left = "initial";
-        datatarget.style.right = "20px";
-        datatarget.style.bottom = "20px";
+      if (draggable.style.left != "" || draggable.style.top != "") {
+        draggable.style.top = "";
+        draggable.style.left = "";
+        draggable.style.right = "20px";
+        draggable.style.bottom = "20px";
       }
     });
 
-    elementMakeDrag2.start();
+    elementMakeDrag.start();
   };
 
   function_pmgnvcdirebja();
