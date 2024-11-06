@@ -11,8 +11,8 @@ class ElementMakeDrag {
 
   start = () => {
     const start = (element) => {
-      var draggable = element;
-      var initialX, initialY, currentX, currentY;
+      let draggable = element;
+      let initialX, initialY, currentX, currentY;
       let allowtouchstart = true;
 
       const startDragging = (e) => {
@@ -125,5 +125,71 @@ class ElementMakeDrag {
     };
 
     start(this._element);
+  };
+}
+
+class ElementMakeDrag2 {
+  constructor(element) {
+    this._element = element;
+    this._events = {};
+  }
+
+  on = (type, callback) => {
+    this._events[type] = callback;
+  };
+
+  start = () => {
+    let draggable = this._element;
+    let element = this._element;
+
+    const startDragging = (e) => {
+      if (typeof this._events.start == "function") {
+        this._events.start({
+          e,
+          target: draggable,
+        });
+      }
+
+      if (e.type === "mousedown") {
+        e.preventDefault();
+      }
+
+      element.addEventListener("touchmove", drag, { passive: false });
+      element.addEventListener("touchend", stopDragging);
+      element.addEventListener("mousemove", drag);
+      element.addEventListener("mouseup", stopDragging);
+      element.addEventListener("mouseleave", stopDragging);
+    };
+
+    const drag = (e) => {
+      if (typeof this._events.move == "function") {
+        this._events.move({
+          e,
+          target: draggable,
+        });
+      }
+    };
+
+    const stopDragging = (e) => {
+      // allowtouchstart = true;
+      if (typeof this._events.end == "function") {
+        this._events.end({
+          e,
+          target: draggable,
+        });
+      }
+
+      if (e.touches && e.touches.length > 0) return;
+      element.removeEventListener("touchmove", drag);
+      element.removeEventListener("touchend", stopDragging);
+      element.removeEventListener("mousemove", drag);
+      element.removeEventListener("mouseup", stopDragging);
+      element.removeEventListener("mouseleave", stopDragging);
+    };
+
+    draggable.addEventListener("touchstart", startDragging, {
+      passive: false,
+    });
+    draggable.addEventListener("mousedown", startDragging);
   };
 }

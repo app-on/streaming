@@ -3721,7 +3721,7 @@ var login = () => {
 
         </header>
 
-        <div class="div_IsTCHpN">
+        <div class="div_IsTCHpN p-10px">
              
           <form id="form" class="div_SCqCUTo" autocomplete="off">
               <h2 style="padding: 0 20px;">Iniciar sesion</h2>
@@ -3794,7 +3794,10 @@ var login = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
+        if (!data?.status) {
+          alert("Email no registrado");
+          $elements.buttonBack.dispatchEvent(new CustomEvent("click"));
+        }
       });
   });
 
@@ -3855,7 +3858,7 @@ var register = () => {
 
         </header>
 
-        <div class="div_IsTCHpN">
+        <div class="div_IsTCHpN p-10px">
              
           <form id="form" class="div_SCqCUTo" autocomplete="off">
               <h2 style="padding: 0 20px;">Registro</h2>
@@ -3999,7 +4002,7 @@ var profile = () => {
 
             </header>
 
-            <div class="div_IsTCHpN">
+            <div class="div_IsTCHpN p-10px">
                  
               <form id="form" class="div_SCqCUTo" autocomplete="off">
                   <h2 style="padding: 0 20px;">Actualizar datos</h2>
@@ -4264,6 +4267,7 @@ var footerVideoPlayer = () => {
     },
     classes: {
       divPreview: null,
+      divPrueba: null,
     },
     values: {
       pinch: {
@@ -4273,14 +4277,14 @@ var footerVideoPlayer = () => {
       },
     },
   };
-  //display:none
+
   const $element = createNodeElement(`
         <footer class="footer_rTzBt2c">
 
-            <div id="divPrueba" class="div_MJ5Ba2C">
+            <div id="divPrueba" class="div_MJ5Ba2C" style="pointer-events:none;">
               <div id="divPreview" class="div_wPiZgS6" style="display:none;">
                   <div id="divPreviewContent" class="d-grid">
-                    <canvas id="canvasVideo"></canvas>
+                    <canvas id="canvasVideo" style="aspect-ratio: 16/9;"></canvas>
                     <div class="div_OZ6oAgh"><span id="spanBar"></span></div>
                     <div class="div_lq8dhAa">
                         <button id="buttonPlayPause"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-play"><path d="M20.494,7.968l-9.54-7A5,5,0,0,0,3,5V19a5,5,0,0,0,7.957,4.031l9.54-7a5,5,0,0,0,0-8.064Zm-1.184,6.45-9.54,7A3,3,0,0,1,5,19V5A2.948,2.948,0,0,1,6.641,2.328,3.018,3.018,0,0,1,8.006,2a2.97,2.97,0,0,1,1.764.589l9.54,7a3,3,0,0,1,0,4.836Z"></path></svg></button>
@@ -4361,6 +4365,7 @@ var footerVideoPlayer = () => {
   useThis.elements.video.addEventListener("loadedmetadata", () => {
     $elements.canvasVideo.width = useThis.elements.video.videoWidth;
     $elements.canvasVideo.height = useThis.elements.video.videoHeight;
+    $elements.canvasVideo.style.aspectRatio = "";
   });
 
   useThis.elements.video.addEventListener("enterpictureinpicture", () => {
@@ -4374,46 +4379,234 @@ var footerVideoPlayer = () => {
 
   $elements.elementVideo.append(useApp.mediaPlayer.element());
 
-  useThis.classes.divPreview = new ElementMakeDrag($elements.divPreview);
+  // useThis.classes.divPreview = new ElementMakeDrag($elements.divPreview);
 
-  useThis.classes.divPreview.on("move", (data) => {
-    const top = data.target.offsetHeight / 2;
-    const left = data.target.offsetWidth / 2;
+  // useThis.classes.divPreview.on("move", (data) => {
+  //   const top = data.target.offsetHeight / 2;
+  //   const left = data.target.offsetWidth / 2;
 
-    const x = Math.max(
-      top * -1,
-      Math.min(
-        data.xy.current.y,
-        window.innerHeight - data.target.offsetHeight + top
-      )
-    );
+  //   const x = Math.max(
+  //     top * -1,
+  //     Math.min(
+  //       data.xy.current.y,
+  //       window.innerHeight - data.target.offsetHeight + top
+  //     )
+  //   );
 
-    const y = Math.max(
-      left * -1,
-      Math.min(
-        data.xy.current.x,
-        window.innerWidth - data.target.offsetWidth + left
-      )
-    );
+  //   const y = Math.max(
+  //     left * -1,
+  //     Math.min(
+  //       data.xy.current.x,
+  //       window.innerWidth - data.target.offsetWidth + left
+  //     )
+  //   );
 
-    data.target.style.top = `${x}px`;
-    data.target.style.left = `${y}px`;
+  //   data.target.style.top = `${x}px`;
+  //   data.target.style.left = `${y}px`;
 
-    data.target.style.right = "initial";
-    data.target.style.bottom = "initial";
+  //   data.target.style.right = "initial";
+  //   data.target.style.bottom = "initial";
 
-    $elements.divPreviewContent.style.pointerEvents = "none";
-  });
+  //   $elements.divPreviewContent.style.pointerEvents = "none";
+  // });
 
-  useThis.classes.divPreview.on("end", () => {
-    $elements.divPreviewContent.style.pointerEvents = "";
-  });
+  // useThis.classes.divPreview.on("end", () => {
+  //   $elements.divPreviewContent.style.pointerEvents = "";
+  // });
 
-  useThis.classes.divPreview.start();
+  // useThis.classes.divPreview.start();
 
-  $elements.divPrueba.addEventListener("click", () => {
-    console.log("hola");
-  });
+  // $elements.divPrueba.addEventListener("click", () => {
+  //   console.log("hola");
+  // });
+
+  const function_pmgnvcdirebja = () => {
+    const elementMakeDrag2 = new ElementMakeDrag2($elements.divPrueba);
+    const draggable = $elements.divPreview;
+
+    const datapinch = {
+      allow: false,
+      startdistance: 0,
+      lastdistance: 0,
+      scale: 1,
+    };
+
+    const datamove = {
+      allow: false,
+      xy: {
+        initial: {
+          x: 0,
+          y: 0,
+        },
+        current: {
+          x: 0,
+          y: 0,
+        },
+      },
+    };
+
+    let resizemove = false;
+
+    elementMakeDrag2.on("start", ({ e, target }) => {
+      target.style.pointerEvents = "";
+
+      if (e.touches) {
+        if (!draggable.contains(e.touches[0].target)) return;
+      }
+
+      if (draggable.contains(e.target)) {
+        datamove.allow = true;
+
+        if (e.type === "touchstart") {
+          // alert(draggable.contains(e.touches[0].target));
+          const index = Array.from(e.touches).findIndex((touch) =>
+            draggable.contains(touch.target)
+          );
+
+          datamove.xy.initial.x =
+            e.touches[index].clientX - draggable.offsetLeft;
+          datamove.xy.initial.y =
+            e.touches[index].clientY - draggable.offsetTop;
+        } else {
+          datamove.xy.initial.x = e.clientX - draggable.offsetLeft;
+          datamove.xy.initial.y = e.clientY - draggable.offsetTop;
+        }
+
+        if (e.touches && e.touches.length === 2) {
+          datapinch.allow = true;
+          datapinch.lastdistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+        }
+      }
+    });
+    elementMakeDrag2.on("move", ({ e }) => {
+      if (datamove.allow) {
+        $elements.divPreviewContent.style.pointerEvents = "none";
+
+        resizemove = true;
+        const datatarget = draggable;
+
+        if (e.type === "touchmove") {
+          e.preventDefault();
+          const index = Array.from(e.touches).findIndex((touch) =>
+            draggable.contains(touch.target)
+          );
+
+          if (index != -1) {
+            datamove.xy.current.x =
+              e.touches[index].clientX - datamove.xy.initial.x;
+            datamove.xy.current.y =
+              e.touches[index].clientY - datamove.xy.initial.y;
+          }
+        } else {
+          datamove.xy.current.x = e.clientX - datamove.xy.initial.x;
+          datamove.xy.current.y = e.clientY - datamove.xy.initial.y;
+        }
+
+        const top = datatarget.offsetHeight / 2;
+        const left = datatarget.offsetWidth / 2;
+
+        const y = Math.max(
+          top * -1,
+          Math.min(
+            datamove.xy.current.y,
+            window.innerHeight - datatarget.offsetHeight + top
+          )
+        );
+
+        const x = Math.max(
+          left * -1,
+          Math.min(
+            datamove.xy.current.x,
+            window.innerWidth - datatarget.offsetWidth + left
+          )
+        );
+
+        datatarget.style.top = `${y}px`;
+        datatarget.style.left = `${x}px`;
+
+        datatarget.style.right = "initial";
+        datatarget.style.bottom = "initial";
+      }
+
+      if (datapinch.allow) {
+        if (e.touches && e.touches.length === 2) {
+          const datatarget = draggable;
+          const currentdistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+
+          //   if (parseInt(imagen.style.width) != 500) {}
+
+          if (
+            (currentdistance > datapinch.lastdistance &&
+              parseInt(datatarget.style.width) == 700) ||
+            (currentdistance < datapinch.lastdistance &&
+              parseInt(datatarget.style.width) == 150)
+          )
+            return (datapinch.lastdistance = currentdistance);
+
+          const scalerelative = currentdistance / datapinch.lastdistance;
+          datapinch.scale *= scalerelative;
+
+          datapinch.lastdistance = currentdistance;
+
+          if (!datatarget.getAttribute("data-width")) {
+            datatarget.setAttribute("data-width", datatarget.offsetWidth);
+          }
+
+          datatarget.style.width = `${Math.max(
+            150,
+            Math.min(
+              parseInt(datatarget.getAttribute("data-width")) * datapinch.scale,
+              700
+            )
+          )}px`;
+        }
+      }
+    });
+    elementMakeDrag2.on("end", ({ e, target }) => {
+      if (datamove.allow && ((e.touches && !e.touches.length) || !e.touches)) {
+        datamove.allow = false;
+      }
+
+      if (datapinch.allow && e.touches && e.touches.length != 2) {
+        datapinch.allow = false;
+      }
+
+      if (e.touches && e.touches.length) return;
+
+      target.style.pointerEvents = "none";
+      $elements.divPreviewContent.style.pointerEvents = "";
+    });
+
+    draggable.addEventListener("wheel", (e) => {
+      const datatarget = draggable;
+
+      datatarget.style.width = `${Math.max(
+        150,
+        Math.min(datatarget.offsetWidth - (e.deltaY > 0 ? 10 : -10), 700)
+      )}px`;
+    });
+
+    addEventListener("resize", () => {
+      if (resizemove) {
+        resizemove = false;
+        const datatarget = $elements.divPreview;
+        datatarget.style.top = "initial";
+        datatarget.style.left = "initial";
+        datatarget.style.right = "20px";
+        datatarget.style.bottom = "20px";
+      }
+    });
+
+    elementMakeDrag2.start();
+  };
+
+  function_pmgnvcdirebja();
 
   return $element;
 };
