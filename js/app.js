@@ -3,13 +3,21 @@
 var config = () => {
   const config = {
     routes: new RouteHashCallback(),
+    auth: "auth_Mj8Q5q3",
+    user: null,
     icon: new IconSVG(),
     mediaPlayer: new MediaPlayer(
       document.createDocumentFragment(),
       "media-player-id-iW8IhsgzukptrV"
     ),
-
     url: {
+      //https://api.vniox.com/streaming
+      //http://192.168.1.8/api/streaming
+      server: (pathname = "") => {
+        return `https://api.vniox.com/streaming/${trimString(pathname).left(
+          "/"
+        )}`;
+      },
       img: (url = "") =>
         `https://img.vniox.com/index.php?url=${encodeURIComponent(url)}`,
       // fetch: (url = "") =>
@@ -39,6 +47,69 @@ var config = () => {
   return config;
 };
 
+var auth = () => {
+  return new Promise((resolve, reject) => {
+    const useApp = window.dataApp;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "auth.session",
+    });
+
+    if (Cookie.get(useApp.auth)) {
+      return fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+        method: "GET",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          dispatchEvent(new CustomEvent("_auth", { detail: data }));
+          resolve(data);
+        })
+        .catch(reject);
+    }
+
+    dispatchEvent(new CustomEvent("_auth", { detail: null }));
+    resolve(null);
+  });
+};
+
+var routesPrivate = (page = "") => {
+  const useApp = window.dataApp;
+  const $node = document.createTextNode("");
+
+  auth().then((result) => {
+    if (result?.status) {
+      Cookie.set(useApp.auth, result.token, {
+        lifetime: 60 * 60 * 24 * 7,
+      });
+      return $node.replaceWith(page());
+    }
+
+    location.hash = "/login";
+  });
+
+  return $node;
+};
+
+var routesPublic = (page = "") => {
+  const useApp = window.dataApp;
+  const $node = document.createTextNode("");
+
+  auth().then((result) => {
+ 
+    if (!result?.status) {
+      Cookie.remove(useApp.auth, {});
+      return $node.replaceWith(page());
+    }
+
+    location.hash = "/";
+  });
+
+  return $node;
+};
+
 var peliculaId = () => {
   const useApp = window.dataApp;
   const useThis = {
@@ -65,11 +136,11 @@ var peliculaId = () => {
                     <h3 id="textTitle"></h3>
                 </div>
 
-                <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu">${useApp.icon.get(
+                <div id="divButton" class="div_x0cH0Hq">
+                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
                       "fi fi-rr-heart"
                     )}</button>
-                    <button id="play" class="button_lvV6qZu">${useApp.icon.get(
+                    <button id="play" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
                       "fi fi-rr-play"
                     )}</button>
                 </div>
@@ -168,8 +239,6 @@ var peliculaId = () => {
         .join("/");
 
       const _convertSecondsToTime = convertSecondsToTime(data.runtime * 60);
-      //data.images.poster.replace("/original/", "/w342/")
-      // $elements.backdrop.src              = useApp.url.img( `https://cuevana.biz/_next/image?url=${ data.images.backdrop }&w=828&q=75` )
       $elements.poster.src = useApp.url.img(
         data.images.poster.replace("/original/", "/w342/")
       );
@@ -183,13 +252,9 @@ var peliculaId = () => {
 
       $elements.itemTrue.append(document.createTextNode(""));
 
+      $elements.play.style.display = "";
       $elements.play.setAttribute("data-data", JSON.stringify(data));
       $elements.play.setAttribute("data-slug", `https://cuevana.biz/${slug}`);
-
-      useThis.reactivity.isFavorite.value = JSON.parse(
-        localStorage.getItem("favorite_pelicula")
-      ).some((video) => video.TMDbId == data.TMDbId);
-      $elements.itemTrue.append(document.createTextNode(""));
 
       useApp.mediaPlayer.settings({
         title: data.titles.name,
@@ -217,7 +282,18 @@ var peliculaId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      // otherMovies.value = Object.values(data.movies).flat()
+      fetch(
+        useApp.url.server(
+          `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
+        )
+      )
+        .then((res) => res.json())
+        .then((status) => {
+          if (status != null) {
+            $elements.favorite.style.display = "";
+            useThis.reactivity.isFavorite.value = status;
+          }
+        });
     }
   });
 
@@ -347,6 +423,9 @@ var peliculaId = () => {
 
           useThis.reactivity.load.value = false;
         }
+
+        useThis.reactivity.load.unobserve();
+        useThis.reactivity.data.unobserve();
       });
   };
 
@@ -418,16 +497,38 @@ var peliculaId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
-    const favorite = JSON.parse(localStorage.getItem("favorite_pelicula"));
-    const index = favorite.findIndex(
-      (video) => video.TMDbId == useThis.reactivity.data.value.TMDbId
-    );
+    useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
-    if (index == -1) favorite.push(useThis.reactivity.data.value);
-    else favorite.splice(index, 1);
+    const addFavorite = () => {
+      const body = {
+        data_id: useThis.reactivity.data.value.TMDbId,
+        data_json: JSON.stringify(
+          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
+            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          }, {})
+        ),
+        type: 2,
+      };
 
-    useThis.reactivity.isFavorite.value = index == -1;
-    localStorage.setItem("favorite_pelicula", JSON.stringify(favorite));
+      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
+        method: "POST",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+        body: JSON.stringify(body),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status) {
+            useThis.reactivity.isFavorite.value = data.toggle == 1;
+          }
+        });
+    };
+
+    addFavorite();
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
@@ -480,7 +581,7 @@ var serieId = () => {
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu">${useApp.icon.get(
+                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
                       "fi fi-rr-heart"
                     )}</button>
                 </div>
@@ -611,6 +712,19 @@ var serieId = () => {
           darkenHexColor(result, 60);
         useApp.elements.meta.color.setAttribute("content", color);
       });
+
+      fetch(
+        useApp.url.server(
+          `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
+        )
+      )
+        .then((res) => res.json())
+        .then((status) => {
+          if (status != null) {
+            $elements.favorite.style.display = "";
+            useThis.reactivity.isFavorite.value = status;
+          }
+        });
     }
   });
 
@@ -844,16 +958,38 @@ var serieId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
-    const favorite = JSON.parse(localStorage.getItem("favorite_serie"));
-    const index = favorite.findIndex(
-      (video) => video.TMDbId == useThis.reactivity.data.value.TMDbId
-    );
+    useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
-    if (index == -1) favorite.push(useThis.reactivity.data.value);
-    else favorite.splice(index, 1);
+    const addFavorite = () => {
+      const body = {
+        data_id: useThis.reactivity.data.value.TMDbId,
+        data_json: JSON.stringify(
+          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
+            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          }, {})
+        ),
+        type: 3,
+      };
 
-    useThis.reactivity.isFavorite.value = index == -1;
-    localStorage.setItem("favorite_serie", JSON.stringify(favorite));
+      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
+        method: "POST",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+        body: JSON.stringify(body),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status) {
+            useThis.reactivity.isFavorite.value = data.toggle == 1;
+          }
+        });
+    };
+
+    addFavorite();
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
@@ -961,6 +1097,9 @@ var pelicula = () => {
                     <a href="#/search/pelicula" class="button_lvV6qZu">${useApp.icon.get(
                       "fi fi-rr-search"
                     )}</a>
+                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
+                      "fi fi-rr-heart"
+                    )}</a>
                 </div>
 
             </header>
@@ -968,7 +1107,7 @@ var pelicula = () => {
             <div class="div_BIchAsC">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
-                    <button data-gender="Favoritos">Favoritos</button>
+                    <button data-gender="Favoritos" style="display:none;">Favoritos</button>
                     ${genders$1
                       .map((gender) => {
                         return `<button data-gender="${gender}" >${gender}</button>`;
@@ -1193,6 +1332,9 @@ var serie = () => {
                     <a href="#/search/serie" class="button_lvV6qZu">${useApp.icon.get(
                       "fi fi-rr-search"
                     )}</a>
+                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
+                      "fi fi-rr-heart"
+                    )}</a>
                 </div>
 
             </header>
@@ -1200,7 +1342,7 @@ var serie = () => {
             <div class="div_BIchAsC">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
-                    <button data-gender="Favoritos">Favoritos</button>
+                    <button data-gender="Favoritos" style="display:none;">Favoritos</button>
                 </div>
             </div>
 
@@ -1973,6 +2115,9 @@ var anime = () => {
                     <a href="#/search/anime" class="button_lvV6qZu">${useApp.icon.get(
                       "fi fi-rr-search"
                     )}</a>
+                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
+                      "fi fi-rr-heart"
+                    )}</a>
                 </div>
                
             </header>
@@ -1980,7 +2125,7 @@ var anime = () => {
             <div class="div_BIchAsC">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
-                    <button data-gender="Favoritos">Favoritos</button>
+                    <button data-gender="Favoritos" style="display:none;">Favoritos</button>
                     ${genders
                       .map((gender) => {
                         return `<button data-gender="${gender
@@ -2110,10 +2255,6 @@ var anime = () => {
           const $text = document.createElement("div");
           $text.innerHTML = text;
 
-          // console.log($text.querySelector("div.TbCnAnmFlv ul.List-Animes"));
-          // console.log($text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02"));
-          // $text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02").children
-
           const lis = Array.from(
             (
               $text.querySelector("div.TbCnAnmFlv ul.List-Animes") ||
@@ -2208,7 +2349,7 @@ var animeId = () => {
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu">${useApp.icon.get(
+                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
                       "fi fi-rr-heart"
                     )}</button>
                 </div>
@@ -2289,7 +2430,7 @@ var animeId = () => {
   useThis.reactivity.data.observe((data) => {
     if (Boolean(Object.keys(data).length)) {
       const episode_length = data.episodes.length;
-      // $elements.backdrop.src  = useApp.url.img( data.poster )
+ 
       $elements.poster.src = useApp.url.img(data.poster);
       $elements.title.textContent = data.title;
       $elements.overview.textContent = data.description;
@@ -2300,10 +2441,10 @@ var animeId = () => {
       $elements.duration.textContent = `${episode_length} episodios`;
       $elements.date.textContent = data.progress;
 
-      useThis.reactivity.isFavorite.value = JSON.parse(
-        localStorage.getItem("favorite_anime")
-      ).some((video) => video.id == data.id);
-      $elements.itemTrue.append(document.createTextNode(""));
+      // useThis.reactivity.isFavorite.value = JSON.parse(
+      //   localStorage.getItem("favorite_anime")
+      // ).some((video) => video.id == data.id);
+      // $elements.itemTrue.append(document.createTextNode(""));
 
       $elements.episodes_range.innerHTML = Array(
         Math.floor(episode_length / 50) + 1
@@ -2334,6 +2475,25 @@ var animeId = () => {
           darkenHexColor(result, 60);
         useApp.elements.meta.color.setAttribute("content", color);
       });
+
+      fetch(
+        useApp.url.server(
+          `/api.php?route=favorites-one&type=1&data_id=${data.id}`
+        ),
+        {
+          method: "GET",
+          headers: {
+            "Token-Auth": Cookie.get(useApp.auth),
+          },
+        }
+      )
+        .then((res) => res.json())
+        .then((status) => {
+          if (status != null) {
+            $elements.favorite.style.display = "";
+            useThis.reactivity.isFavorite.value = status;
+          }
+        });
     }
   });
 
@@ -2549,16 +2709,38 @@ var animeId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
-    const favorite = JSON.parse(localStorage.getItem("favorite_anime"));
-    const index = favorite.findIndex(
-      (video) => video.id == useThis.reactivity.data.value.id
-    );
+    useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
-    if (index == -1) favorite.push(useThis.reactivity.data.value);
-    else favorite.splice(index, 1);
+    const addFavorite = () => {
+      const body = {
+        data_id: useThis.reactivity.data.value.id,
+        data_json: JSON.stringify(
+          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
+            if (["id", "title", "href", "poster", "type"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          }, {})
+        ),
+        type: 1,
+      };
 
-    useThis.reactivity.isFavorite.value = index == -1;
-    localStorage.setItem("favorite_anime", JSON.stringify(favorite));
+      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
+        method: "POST",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+        body: JSON.stringify(body),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status) {
+            useThis.reactivity.isFavorite.value = data.toggle == 1;
+          }
+        });
+    };
+
+    addFavorite();
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
@@ -2598,6 +2780,7 @@ var inicio = () => {
                     <a href="#/search/pelicula" class="button_lvV6qZu">${useApp.icon.get(
                       "fi fi-rr-search"
                     )}</a>
+                    <a href="#/profile" class="button_lvV6qZu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-user"><path d="M12,12A6,6,0,1,0,6,6,6.006,6.006,0,0,0,12,12ZM12,2A4,4,0,1,1,8,6,4,4,0,0,1,12,2Z"></path><path d="M12,14a9.01,9.01,0,0,0-9,9,1,1,0,0,0,2,0,7,7,0,0,1,14,0,1,1,0,0,0,2,0A9.01,9.01,0,0,0,12,14Z"></path></svg></a>
                 </div>
 
             </header>
@@ -2870,7 +3053,7 @@ var searchTypeResult = () => {
                         useThis.params.type != "pelicula" &&
                         "peliculas y series",
                       // serie       : 'series',
-                      youtube: "YT Videos",
+                      // youtube: "YT Videos",
                     })
                       .map((entries) => {
                         if (!entries[1]) return "";
@@ -3223,7 +3406,7 @@ var favoritos = () => {
                       anime: "Animes",
                       pelicula: "peliculas",
                       serie: "series",
-                      youtube: "YT Videos",
+                      // youtube: "YT Videos",
                     })
                       .map((entries, index) => {
                         return `<button data-gender="${entries[0]}" class="${
@@ -3404,21 +3587,58 @@ var favoritos = () => {
   };
 
   useThis.function.dataLoadAnime = () => {
-    useThis.reactivity.load.value = true;
-    useThis.reactivity.Data.value = JSON.parse(
-      localStorage.getItem("favorite_anime")
-    );
-    useThis.reactivity.load.value = false;
+    fetch(useApp.url.server("/api.php?route=favorites&type=1"), {
+      method: "GET",
+      headers: {
+        "Token-Auth": Cookie.get(useApp.auth),
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => JSON.parse(data.data_json))
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
   };
 
   useThis.function.dataLoadPeliculaSerie = (type) => {
-    useThis.reactivity.load.value = true;
-    useThis.reactivity.Data.value = JSON.parse(
-      localStorage.getItem(
-        type == "pelicula" ? "favorite_pelicula" : "favorite_serie"
-      )
-    );
-    useThis.reactivity.load.value = false;
+    fetch(
+      useApp.url.server(
+        `/api.php?route=favorites&type=${type == "pelicula" ? 2 : 3}`
+      ),
+      {
+        method: "GET",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => JSON.parse(data.data_json))
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
+
+    // useThis.reactivity.load.value = true;
+    // useThis.reactivity.Data.value = JSON.parse(
+    //   localStorage.getItem(
+    //     type == "pelicula" ? "favorite_pelicula" : "favorite_serie"
+    //   )
+    // );
+    // useThis.reactivity.load.value = false;
   };
 
   useThis.function.dataLoadYoutube = () => {
@@ -3469,6 +3689,411 @@ var favoritos = () => {
   });
 
   useThis.function.dataLoad();
+
+  return $element;
+};
+
+var login = () => {
+  const useApp = window.dataApp;
+  ({
+    params: useApp.routes.params(),
+    reactivity: {
+      isFavorite: defineVal(false),
+      load: defineVal(true),
+      data: defineVal({}),
+      episodes: defineVal([]),
+    },
+    functions: {},
+  });
+
+  const $element = createNodeElement(`
+
+    <div class="div_Xu02Xjh">
+
+        <header class="header_K0hs3I0">
+
+            <div class="div_uNg74XS">
+                <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
+                  "fi fi-rr-angle-small-left"
+                )}</a>
+                <h3 id="textTitle"></h3>
+            </div>
+
+        </header>
+
+        <div class="div_IsTCHpN">
+             
+          <form id="form" class="div_SCqCUTo" autocomplete="off">
+              <h2 style="padding: 0 20px;">Iniciar sesion</h2>
+              <div class="div_Y85zRC0">
+                  <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                      <input type="text" name="email" placeholder="">
+                      <span>correo</span>
+                  </label>
+              </div>
+              <button id="buttonSubmit" class="button_WU25psx">
+                  <span id="spanLoad">Recibir codigo</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-envelope"><path d="M19,1H5A5.006,5.006,0,0,0,0,6V18a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V6A5.006,5.006,0,0,0,19,1ZM5,3H19a3,3,0,0,1,2.78,1.887l-7.658,7.659a3.007,3.007,0,0,1-4.244,0L2.22,4.887A3,3,0,0,1,5,3ZM19,21H5a3,3,0,0,1-3-3V7.5L8.464,13.96a5.007,5.007,0,0,0,7.072,0L22,7.5V18A3,3,0,0,1,19,21Z"></path></svg>
+              </button>
+              <a href="#/register" class="a_8hzaMUg">
+                  <span>registro</span>
+                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+              </a>
+          </form>
+          <form id="form2" class="div_SCqCUTo" autocomplete="off" style="display: none">
+              <div class="d-flex" style="align-items: center;">
+                <button id="buttonBack" class="wh-40px d-flex-center" type="button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-angle-left"><path d="M17.17,24a1,1,0,0,1-.71-.29L8.29,15.54a5,5,0,0,1,0-7.08L16.46.29a1,1,0,1,1,1.42,1.42L9.71,9.88a3,3,0,0,0,0,4.24l8.17,8.17a1,1,0,0,1,0,1.42A1,1,0,0,1,17.17,24Z"></path></svg></button>
+                <h2>Ingresar codigo</h2>
+              </div>
+              <div class="div_Y85zRC0">
+                  <label class="label_ieXcceLhkyD2WGY label_0BFeKpk pointer-off" style="opacity: 0.7">
+                      <input type="text" name="email" placeholder="" tabindex="-1">
+                      <span>correo</span>
+                  </label>
+                  <label id="labelCode" class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                      <input type="number" name="code" placeholder="" autocomplete="off" tabindex="-1">
+                      <span>codigo</span>
+                  </label>
+              </div>
+              <a href="#" id="aSendEmail" class="a_c305F1l">Volver a recibir codigo</a>
+              <button id="buttonSubmit" class="button_WU25psx">
+                  <span id="spanLoad">Ingresar</span>
+                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+              </button>
+              <a href="#/register" class="a_8hzaMUg">
+                  <span>registro</span>
+                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+              </a>
+          </form>
+
+        </div>
+
+    </div>
+
+`);
+
+  const $elements = createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+
+  $elements.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    $elements.form.style.display = "none";
+    $elements.form2.style.display = "";
+
+    const body = {
+      email: $elements.form.email.value.trim(),
+    };
+
+    fetch(useApp.url.server("/api.php?route=auth.login-email-get"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+      });
+  });
+
+  $elements.form2.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    location.hash = `/login/code/${encodeURIComponent(
+      JSON.stringify([$elements.form2.email.value, $elements.form2.code.value])
+    )}`;
+  });
+
+  $elements.form.email.addEventListener("input", () => {
+    $elements.form2.email.value = $elements.form.email.value.trim();
+  });
+
+  $elements.form2.code.addEventListener("input", (e) => {
+    if (e.target.value.length > 6) e.target.value = e.target.value.slice(0, 6);
+  });
+
+  $elements.aSendEmail.addEventListener("click", (e) => {
+    e.preventDefault();
+    console.log("volver a enviar codigo");
+  });
+
+  $elements.buttonBack.addEventListener("click", () => {
+    $elements.form.style.display = "";
+    $elements.form2.style.display = "none";
+  });
+
+  return $element;
+};
+
+var register = () => {
+  const useApp = window.dataApp;
+  ({
+    params: useApp.routes.params(),
+    reactivity: {
+      isFavorite: defineVal(false),
+      load: defineVal(true),
+      data: defineVal({}),
+      episodes: defineVal([]),
+    },
+    functions: {},
+  });
+
+  const $element = createNodeElement(`
+
+    <div class="div_Xu02Xjh">
+
+        <header class="header_K0hs3I0">
+
+            <div class="div_uNg74XS">
+                <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
+                  "fi fi-rr-angle-small-left"
+                )}</a>
+                <h3 id="textTitle"></h3>
+            </div>
+
+        </header>
+
+        <div class="div_IsTCHpN">
+             
+          <form id="form" class="div_SCqCUTo" autocomplete="off">
+              <h2 style="padding: 0 20px;">Registro</h2>
+              <div class="div_Y85zRC0">
+                  <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                      <input type="text" name="fullname" placeholder="">
+                      <span>Nombre</span>
+                  </label>
+                  <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                      <input type="text" name="lastname" placeholder="" autocomplete="off">
+                      <span>Apellido</span>
+                  </label>
+                  <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                      <input type="text" name="email" placeholder="" autocomplete="off">
+                      <span>Correo</span>
+                  </label>
+              </div>
+              <button class="button_WU25psx">
+                  <span id="spanLoad">Crear cuenta</span>
+                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+              </button>
+              <a href="#/login" class="a_8hzaMUg">
+                  <span>Iniciar sesion</span>
+                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+              </a>
+          </form>
+
+        </div>
+
+    </div>
+
+`);
+
+  const $elements = createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+
+  $elements.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const body = {
+      fullname: $elements.form.fullname.value.trim(),
+      lastname: $elements.form.lastname.value.trim(),
+      email: $elements.form.email.value.trim(),
+    };
+
+    fetch(useApp.url.server("/api.php?route=auth.register"), {
+      method: "POST",
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+      });
+
+    // console.log(body);
+  });
+
+  return $element;
+};
+
+var loginKeyValue = () => {
+  const useApp = window.dataApp;
+  const useThis = {
+    params: useApp.routes.params(),
+    reactivity: {
+      isFavorite: defineVal(false),
+      load: defineVal(true),
+      data: defineVal({}),
+      episodes: defineVal([]),
+    },
+    functions: {},
+  };
+
+  const $element = createNodeElement(`<div class=""></div>`);
+  createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+
+  if (useThis.params.key == "code") {
+    try {
+      const [email, code] = JSON.parse(
+        decodeURIComponent(useThis.params.value)
+      );
+
+      if (true) {
+        const body = {
+          email,
+          code,
+        };
+
+        console.log(body);
+
+        fetch(useApp.url.server("/api.php?route=auth.login-email-set"), {
+          method: "POST",
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.status) {
+              Cookie.set(useApp.auth, data.token, {
+                lifetime: 60 * 60 * 24 * 7,
+              });
+
+              location.hash = "/";
+            } else {
+              location.hash = "/";
+              setTimeout(() => {
+                alert("Codigo no valido");
+              }, 50);
+            }
+          });
+      }
+    } catch (error) {
+      console.log("el codigo no es valido");
+    }
+  }
+
+  return $element;
+};
+
+var profile = () => {
+  const useApp = window.dataApp;
+
+  const $element = createNodeElement(`
+
+        <div class="div_Xu02Xjh">
+
+            <header class="header_K0hs3I0">
+
+                <div class="div_uNg74XS">
+                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
+                      "fi fi-rr-angle-small-left"
+                    )}</a>
+                    <h3 id="textTitle">Actualizar datos</h3>
+                </div>
+
+            </header>
+
+            <div class="div_IsTCHpN">
+                 
+              <form id="form" class="div_SCqCUTo" autocomplete="off">
+                  <h2 style="padding: 0 20px;">Actualizar datos</h2>
+                  <div class="div_Y85zRC0">
+                      <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                          <input type="text" name="fullname" placeholder="" autocomplete="off">
+                          <span>nombre</span>
+                      </label>
+                      <label class="label_ieXcceLhkyD2WGY label_0BFeKpk">
+                          <input type="text" name="lastname" placeholder="" autocomplete="off">
+                          <span>apellido</span>
+                      </label>
+                  </div>
+                  <button class="button_WU25psx">
+                      <span id="spanLoad">Actualizar datos</span>
+                      ${useApp.icon.get("fi fi-rr-arrow-right")}
+                  </button>
+                  <a href="#/register" id="aLogout" class="a_8hzaMUg">
+                      <span>Cerrar sesion</span>
+                      ${useApp.icon.get("fi fi-rr-arrow-right")}
+                  </a>
+              </form>
+
+            </div>
+
+        </div>
+
+    `);
+
+  const $elements = createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+
+  $elements.form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const encodeQueryString = encodeQueryObject({
+      route: "user",
+    });
+
+    const body = {
+      fullname: $elements.form.fullname.value.trim(),
+      lsatname: $elements.form.lastname.value.trim(),
+    };
+
+    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.status) alert("Datos actualizados");
+        else alert("Ocurrio un error");
+      });
+  });
+
+  fetch(useApp.url.server(`/api.php?route=user`), {
+    method: "GET",
+    headers: {
+      "Token-Auth": Cookie.get(useApp.auth),
+    },
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      $elements.form.fullname.value = data?.fullname || "";
+      $elements.form.lastname.value = data?.lastname || "";
+    });
+
+  $elements.aLogout.addEventListener("click", (e) => {
+    e.preventDefault();
+
+    if (confirm("¿Cerrar session?")) {
+      const encodeQueryString = encodeQueryObject({
+        route: "auth.logout",
+        id: "one",
+      });
+
+      fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+        method: "POST",
+        headers: {
+          "Token-Auth": Cookie.get(useApp.auth),
+        },
+      })
+        .then((res) => res.json())
+        .then((res) => {
+          if (res?.status) {
+            location.hash = "/login";
+          }
+        });
+    }
+  });
+
   return $element;
 };
 
@@ -3477,6 +4102,12 @@ var routes = () => {
 
   useApp.routes.set([
     { hash: "/", callback: inicio },
+    { hash: "/login", callback: () => routesPublic(login) },
+    { hash: "/register", callback: () => routesPublic(register) },
+
+    { hash: "/login/:key/:value", callback: () => routesPublic(loginKeyValue) },
+    { hash: "/profile", callback: () => routesPrivate(profile) },
+
     { hash: "/youtube", callback: youtube },
     { hash: "/youtube/:id", callback: youtubeId },
     { hash: "/pelicula", callback: pelicula },
@@ -3488,7 +4119,8 @@ var routes = () => {
     { hash: "/search/:type", callback: searchType },
     { hash: "/search/:type/:result", callback: searchType },
     { hash: "/search/:type/:result/result", callback: searchTypeResult },
-    { hash: "/favoritos", callback: favoritos },
+
+    { hash: "/favoritos", callback: () => routesPrivate(favoritos) },
   ]);
 
   addEventListener("hashchange", () => {
@@ -3644,17 +4276,21 @@ var footerVideoPlayer = () => {
   //display:none
   const $element = createNodeElement(`
         <footer class="footer_rTzBt2c">
-            <div id="divPreview" class="div_wPiZgS6" style="display:none;">
-                <div id="divPreviewContent" class="d-grid">
-                  <canvas id="canvasVideo"></canvas>
-                  <div class="div_OZ6oAgh"><span id="spanBar"></span></div>
-                  <div class="div_lq8dhAa">
-                      <button id="buttonPlayPause"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-play"><path d="M20.494,7.968l-9.54-7A5,5,0,0,0,3,5V19a5,5,0,0,0,7.957,4.031l9.54-7a5,5,0,0,0,0-8.064Zm-1.184,6.45-9.54,7A3,3,0,0,1,5,19V5A2.948,2.948,0,0,1,6.641,2.328,3.018,3.018,0,0,1,8.006,2a2.97,2.97,0,0,1,1.764.589l9.54,7a3,3,0,0,1,0,4.836Z"></path></svg></button>
-                      <button id="buttonPIP"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-svg-name="fi fi-rr-resize"><path d="m19 0h-8a5.006 5.006 0 0 0 -5 5v6h-1a5.006 5.006 0 0 0 -5 5v3a5.006 5.006 0 0 0 5 5h3a5.006 5.006 0 0 0 5-5v-1h6a5.006 5.006 0 0 0 5-5v-8a5.006 5.006 0 0 0 -5-5zm-8 16a3 3 0 0 1 -3-3 3 3 0 0 1 3 3zm0 3a3 3 0 0 1 -3 3h-3a3 3 0 0 1 -3-3v-3a3 3 0 0 1 3-3h1a5.006 5.006 0 0 0 5 5zm11-6a3 3 0 0 1 -3 3h-6a4.969 4.969 0 0 0 -.833-2.753l5.833-5.833v2.586a1 1 0 0 0 2 0v-3a3 3 0 0 0 -3-3h-3a1 1 0 0 0 0 2h2.586l-5.833 5.833a4.969 4.969 0 0 0 -2.753-.833v-6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3z"></path></svg></button>
-                      <button id="buttonCloseVideo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-cross"><path d="M23.707.293h0a1,1,0,0,0-1.414,0L12,10.586,1.707.293a1,1,0,0,0-1.414,0h0a1,1,0,0,0,0,1.414L10.586,12,.293,22.293a1,1,0,0,0,0,1.414h0a1,1,0,0,0,1.414,0L12,13.414,22.293,23.707a1,1,0,0,0,1.414,0h0a1,1,0,0,0,0-1.414L13.414,12,23.707,1.707A1,1,0,0,0,23.707.293Z"></path></svg></button>
+
+            <div id="divPrueba" class="div_MJ5Ba2C">
+              <div id="divPreview" class="div_wPiZgS6" style="display:none;">
+                  <div id="divPreviewContent" class="d-grid">
+                    <canvas id="canvasVideo"></canvas>
+                    <div class="div_OZ6oAgh"><span id="spanBar"></span></div>
+                    <div class="div_lq8dhAa">
+                        <button id="buttonPlayPause"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-play"><path d="M20.494,7.968l-9.54-7A5,5,0,0,0,3,5V19a5,5,0,0,0,7.957,4.031l9.54-7a5,5,0,0,0,0-8.064Zm-1.184,6.45-9.54,7A3,3,0,0,1,5,19V5A2.948,2.948,0,0,1,6.641,2.328,3.018,3.018,0,0,1,8.006,2a2.97,2.97,0,0,1,1.764.589l9.54,7a3,3,0,0,1,0,4.836Z"></path></svg></button>
+                        <button id="buttonPIP"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-svg-name="fi fi-rr-resize"><path d="m19 0h-8a5.006 5.006 0 0 0 -5 5v6h-1a5.006 5.006 0 0 0 -5 5v3a5.006 5.006 0 0 0 5 5h3a5.006 5.006 0 0 0 5-5v-1h6a5.006 5.006 0 0 0 5-5v-8a5.006 5.006 0 0 0 -5-5zm-8 16a3 3 0 0 1 -3-3 3 3 0 0 1 3 3zm0 3a3 3 0 0 1 -3 3h-3a3 3 0 0 1 -3-3v-3a3 3 0 0 1 3-3h1a5.006 5.006 0 0 0 5 5zm11-6a3 3 0 0 1 -3 3h-6a4.969 4.969 0 0 0 -.833-2.753l5.833-5.833v2.586a1 1 0 0 0 2 0v-3a3 3 0 0 0 -3-3h-3a1 1 0 0 0 0 2h2.586l-5.833 5.833a4.969 4.969 0 0 0 -2.753-.833v-6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3z"></path></svg></button>
+                        <button id="buttonCloseVideo"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-cross"><path d="M23.707.293h0a1,1,0,0,0-1.414,0L12,10.586,1.707.293a1,1,0,0,0-1.414,0h0a1,1,0,0,0,0,1.414L10.586,12,.293,22.293a1,1,0,0,0,0,1.414h0a1,1,0,0,0,1.414,0L12,13.414,22.293,23.707a1,1,0,0,0,1.414,0h0a1,1,0,0,0,0-1.414L13.414,12,23.707,1.707A1,1,0,0,0,23.707.293Z"></path></svg></button>
+                    </div>
                   </div>
-                </div>
+              </div>
             </div>
+            
             <div class="div_rFbZYz7">
                 <div id="elementVideo" class="div_DFHkIAJ pointer-on"></div>
             </div>
@@ -3775,6 +4411,10 @@ var footerVideoPlayer = () => {
 
   useThis.classes.divPreview.start();
 
+  $elements.divPrueba.addEventListener("click", () => {
+    console.log("hola");
+  });
+
   return $element;
 };
 
@@ -3783,7 +4423,6 @@ addEventListener("contextmenu", (e) => {
 });
 
 addEventListener("DOMContentLoaded", () => {
-
   storageObject(
     localStorage,
     {

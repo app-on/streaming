@@ -1,3 +1,4 @@
+
 /* ----- APP -- APP.CSS ----- */
 
 * {
@@ -24,6 +25,12 @@ button {
   background: none;
   outline: none;
   border: none;
+
+  color: inherit;
+}
+
+input {
+  color: inherit;
 }
 
 #app {
@@ -62,12 +69,7 @@ button {
 
 /* ----- APP -- CLASS.CSS ----- */
 
-.flex-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
+/* start - pointer */
 .pointer-off {
   pointer-events: none;
 }
@@ -76,14 +78,7 @@ button {
   pointer-events: initial;
 }
 
-.m-auto {
-  margin: auto;
-}
-
-.g-col-full {
-  grid-column: 1 / -1;
-}
-
+/* start - overflow */
 .scroll-h {
   overflow: hidden;
 }
@@ -98,8 +93,14 @@ button {
   overflow-y: hidden;
 }
 
+/* start - display */
+
 .d-none {
   display: none;
+}
+
+.d-block {
+  display: block;
 }
 
 .d-flex {
@@ -110,18 +111,7 @@ button {
   display: grid;
 }
 
-.d-flex-center {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.text-overflow-ellipsis {
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
+/* start - padding */
 .p-5px {
   padding: 5px;
 }
@@ -133,6 +123,79 @@ button {
 }
 .p-20px {
   padding: 20px;
+}
+
+/* start - gap */
+.gap-5px {
+  gap: 5px;
+}
+.gap-10px {
+  gap: 10px;
+}
+.gap-15px {
+  gap: 15px;
+}
+.gap-20px {
+  gap: 20px;
+}
+
+/* start - margin */
+.m-auto {
+  margin: auto;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.my-auto {
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.ml-auto {
+  margin-left: auto;
+}
+
+.mt-auto {
+  margin-top: auto;
+}
+
+.mr-auto {
+  margin-right: auto;
+}
+
+.mb-auto {
+  margin-bottom: auto;
+}
+/* start - other */
+
+.wh-40px {
+  width: 40px;
+  height: 40px;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.text-overflow-ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.d-flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.g-col-full {
+  grid-column: 1 / -1;
 }
 
 /* ----- APP -- DEFAULT.CSS ----- */
@@ -253,6 +316,135 @@ button {
     width: 100px;
     height: 100px;
     fill: var(--color-letter);
+  }
+}
+
+/* ----- APP -- INPUTS.CSS ----- */
+
+.label_ieXcceLhkyD2WGY {
+  --background: var(--color-background);
+  --color: var(--color-letter);
+  position: relative;
+  display: flex;
+  background: var(--background);
+  color: var(--color);
+
+  width: 100%;
+  height: 60px;
+
+  border-radius: 15px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  transition: all 0.1s linear;
+
+  & input {
+    background: none;
+    outline: none;
+    border: none;
+
+    position: absolute;
+    inset: 0;
+
+    padding: 0 20px;
+    padding-top: 20px;
+    font-size: 15px;
+    font-weight: bold;
+
+    transition: inherit;
+
+    &:focus + span,
+    &:not(:placeholder-shown) + span {
+      padding-bottom: 20px;
+      font-size: 13px;
+    }
+  }
+
+  & span {
+    width: 100%;
+    height: 20px;
+    padding: 0 20px;
+    font-size: 15px;
+
+    display: flex;
+    align-items: center;
+
+    transition: inherit;
+  }
+}
+
+.label_RLkFTU2uXJoKahS {
+  --background: var(--color-background);
+  --color: var(--color-letter);
+
+  position: relative;
+  display: flex;
+  background: var(--background);
+  color: var(--color);
+  width: 100%;
+  height: 60px;
+
+  border-radius: 15px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  transition: all 0.1s linear;
+
+  cursor: pointer;
+
+  & input {
+    background: none;
+    outline: none;
+    border: none;
+
+    position: absolute;
+    inset: 0;
+
+    padding: 0 20px;
+    padding-top: 20px;
+    font-size: 15px;
+    font-weight: bold;
+
+    transition: inherit;
+
+    cursor: inherit;
+
+    &:focus + span,
+    &:not(:placeholder-shown) + span {
+      padding-bottom: 20px;
+      font-size: 13px;
+    }
+  }
+
+  & span {
+    &:first-of-type {
+      width: 100%;
+      height: 20px;
+      padding: 0 20px;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+
+      transition: inherit;
+    }
+
+    &:last-of-type {
+      width: 60px;
+      height: 60px;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+
+  & svg {
+    width: 15px;
+    height: 15px;
   }
 }
 
@@ -459,6 +651,8 @@ button {
   border-radius: 15px;
   overflow: hidden;
 
+  pointer-events: initial;
+
   & canvas {
     object-fit: contain;
     aspect-ratio: 16/9;
@@ -504,6 +698,15 @@ button {
     background: #ffffff;
     width: 0;
   }
+}
+
+.div_MJ5Ba2C {
+  position: fixed;
+  inset: 0;
+
+  z-index: 999;
+
+  pointer-events: none;
 }
 
 /* ----- COMPONENTS -- MODALITEM.CSS ----- */
@@ -557,7 +760,7 @@ button {
 
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: #f7f7f7 #1c1c1e;
+  scrollbar-color:  #f7f7f7 #1C1C1E;
 }
 
 .div_SAkweTq {
@@ -1130,6 +1333,145 @@ button {
   & svg {
     margin: auto;
   }
+}
+
+/* ----- PAGE -- LOGIN.CSS ----- */
+
+.div_7wOjGZ8 {
+  background: var(--color-background);
+  position: fixed;
+  inset: 0;
+
+  display: flex;
+  padding: 20px;
+}
+
+.div_SCqCUTo {
+  margin: auto;
+  display: grid;
+  gap: 15px;
+
+  width: min(100%, 400px);
+
+  border-radius: 15px;
+
+  color: var(--color-letter);
+}
+
+.div_Y85zRC0 {
+  display: grid;
+  gap: 5px;
+}
+
+.label_L3539wR {
+  position: relative;
+  background: var(--color-item);
+  color: var(--color-letter);
+
+  display: grid;
+
+  height: 60px;
+  border-radius: 15px;
+  overflow: hidden;
+
+  & span {
+    position: absolute;
+    top: 14px;
+    left: 20px;
+    font-size: 13px;
+  }
+
+  & input {
+    position: relative;
+    background: none;
+    border: none;
+    outline: none;
+
+    color: inherit;
+    padding: 0 20px;
+    padding-top: 16px;
+    font-size: 15px;
+    font-weight: bold;
+  }
+}
+
+.a_c305F1l {
+  margin-right: auto;
+  color: inherit;
+  font-size: 15px;
+  padding: 0 20px;
+}
+
+.button_WU25psx {
+  background: var(--color-letter);
+  color: var(--color-item);
+
+  font-size: 15px;
+
+  border: none;
+  outline: none;
+
+  height: 60px;
+  padding: 0 20px;
+
+  border-radius: 15px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  font-size: 15px;
+  font-weight: bold;
+
+  & svg {
+    fill: var(--color-item);
+  }
+}
+
+.a_8hzaMUg {
+  margin-left: auto;
+  background: none;
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  gap: 20px;
+
+  border-radius: 15px;
+
+  font-size: 15px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.div_TwxBw4R {
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  border-radius: 15px;
+
+  padding: 15px;
+  gap: 15px;
+
+  width: min(100%, 400px);
+
+  /* background: var(--color-item); */
+  color: var(--color-letter);
+
+  /* aspect-ratio: 1 / 1; */
+}
+
+.div_70M5Jpt {
+  flex: 1;
+  color: var(--color-letter);
+  text-align: center;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.label_0BFeKpk {
+  background: var(--color-item);
 }
 
 /* ----- PAGE -- PELICULA.CSS ----- */
@@ -1737,6 +2079,8 @@ button {
 }
 
 /* ----- PAGE -- SERIE2.CSS ----- */
+
+
 
 /* ----- PAGE -- YOUTUBE.CSS ----- */
 
