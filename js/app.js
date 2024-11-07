@@ -285,7 +285,13 @@ var peliculaId = () => {
       fetch(
         useApp.url.server(
           `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
-        )
+        ),
+        {
+          method: "GET",
+          headers: {
+            "Token-Auth": Cookie.get(useApp.auth),
+          },
+        }
       )
         .then((res) => res.json())
         .then((status) => {
@@ -716,7 +722,13 @@ var serieId = () => {
       fetch(
         useApp.url.server(
           `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
-        )
+        ),
+        {
+          method: "GET",
+          headers: {
+            "Token-Auth": Cookie.get(useApp.auth),
+          },
+        }
       )
         .then((res) => res.json())
         .then((status) => {
