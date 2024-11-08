@@ -8,7 +8,7 @@ var config = () => {
     icon: new IconSVG(),
     mediaPlayer: new MediaPlayer(
       document.createDocumentFragment(),
-      "media-player-id-iW8IhsgzukptrV"
+      "media-player-id-608349709553889"
     ),
     url: {
       //https://api.vniox.com/streaming
@@ -41,6 +41,7 @@ var config = () => {
     },
     values: {
       youtubeToken: null,
+      hls: null,
     },
   };
 
@@ -98,7 +99,7 @@ var routesPublic = (page = "") => {
   const $node = document.createTextNode("");
 
   auth().then((result) => {
- 
+    console.log(result);
     if (!result?.status) {
       Cookie.remove(useApp.auth, {});
       return $node.replaceWith(page());
@@ -256,12 +257,14 @@ var peliculaId = () => {
       $elements.play.setAttribute("data-data", JSON.stringify(data));
       $elements.play.setAttribute("data-slug", `https://cuevana.biz/${slug}`);
 
-      useApp.mediaPlayer.settings({
+      useApp.mediaPlayer.info({
         title: data.titles.name,
         description: data.genres.map((genre) => genre.name).join(", "),
-        controls: {
-          includesYes: ["*"],
-          includesNot: ["lock", "chromecast", "download"],
+      });
+
+      useApp.mediaPlayer.controls({
+        options: {
+          not: ["download"],
         },
       });
 
@@ -336,25 +339,79 @@ var peliculaId = () => {
     const host = hostSplit.length == 3 ? hostSplit[1] : hostSplit[0];
     const mediaPlayer = useApp.mediaPlayer;
 
-    console.log(url);
-
     if (["streamwish"].includes(host)) {
       MediaWebUrl.streamwish({ url: url }).then((res) => {
-        if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-        else alert("Video no disponible");
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
       });
     } else if (["voe"].includes(host)) {
       MediaWebUrl.voesx({ url: url }).then((res) => {
-        if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-        else alert("Video no disponible");
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
       });
     } else if (["doodstream"].includes(host)) {
-      console.log("buscar en doodstream");
-      // MediaWeb.doodstream({ url : url }).then( res => {
-      //     if(res.body.status) mediaPlayer.open({ url : res.body.url });
-      //     else alert('Video no disponible')
-      // })
+      MediaWebUrl.doodstream({ url: url }).then((res) => {
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
+      });
+    } else if (["yourupload"].includes(host)) {
+      MediaWeb.yourupload({ url: url }).then((res) => {
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
+      });
     }
+
+    // if (["streamwish"].includes(host)) {
+    //   MediaWebUrl.streamwish({ url: url }).then((res) => {
+    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
+    //     else alert("Video no disponible");
+    //   });
+    // } else if (["voe"].includes(host)) {
+    //   MediaWebUrl.voesx({ url: url }).then((res) => {
+    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
+    //     else alert("Video no disponible");
+    //   });
+    // } else if (["doodstream"].includes(host)) {
+    //   console.log("buscar en doodstream");
+    //   // MediaWeb.doodstream({ url : url }).then( res => {
+    //   //     if(res.body.status) mediaPlayer.open({ url : res.body.url });
+    //   //     else alert('Video no disponible')
+    //   // })
+    // }
   };
 
   useThis.functions.getLinkVideo = (slug) => {
@@ -812,25 +869,81 @@ var serieId = () => {
 
     if (["streamwish"].includes(host)) {
       MediaWebUrl.streamwish({ url: url }).then((res) => {
-        if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-        else alert("Video no disponible");
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
       });
     } else if (["voe"].includes(host)) {
       MediaWebUrl.voesx({ url: url }).then((res) => {
-        if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-        else alert("Video no disponible");
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
       });
     } else if (["doodstream"].includes(host)) {
-      MediaWeb.doodstream({ url: url }).then((res) => {
-        if (res.body.status) mediaPlayer.open({ url: res.body.url });
-        else alert("Video no disponible");
+      MediaWebUrl.doodstream({ url: url }).then((res) => {
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
       });
     } else if (["yourupload"].includes(host)) {
       MediaWeb.yourupload({ url: url }).then((res) => {
-        if (res.body.status) mediaPlayer.open({ url: res.body.url });
-        else alert("Video no disponible");
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
       });
     }
+
+    // if (["streamwish"].includes(host)) {
+    //   MediaWebUrl.streamwish({ url: url }).then((res) => {
+    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
+    //     else alert("Video no disponible");
+    //   });
+    // } else if (["voe"].includes(host)) {
+    //   MediaWebUrl.voesx({ url: url }).then((res) => {
+    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
+    //     else alert("Video no disponible");
+    //   });
+    // } else if (["doodstream"].includes(host)) {
+    //   MediaWeb.doodstream({ url: url }).then((res) => {
+    //     if (res.body.status) mediaPlayer.open({ url: res.body.url });
+    //     else alert("Video no disponible");
+    //   });
+    // } else if (["yourupload"].includes(host)) {
+    //   MediaWeb.yourupload({ url: url }).then((res) => {
+    //     if (res.body.status) mediaPlayer.open({ url: res.body.url });
+    //     else alert("Video no disponible");
+    //   });
+    // }
   };
 
   useThis.functions.dataLoad = () => {
@@ -1012,14 +1125,16 @@ var serieId = () => {
       $elements.itemTrueOption.hidePopover();
       useApp.mediaPlayer.element().requestFullscreen();
 
-      useApp.mediaPlayer.settings({
+      useApp.mediaPlayer.info({
         title: useThis.val.dataInfo.props.pageProps.episode.title,
         description: useThis.val.dataInfo.props.pageProps.serie.genres
           .map((genre) => genre.name)
           .join(", "),
-        controls: {
-          includesYes: ["*"],
-          includesNot: ["lock", "chromecast", "download"],
+      });
+
+      useApp.mediaPlayer.controls({
+        options: {
+          not: ["download"],
         },
       });
 
@@ -2442,7 +2557,7 @@ var animeId = () => {
   useThis.reactivity.data.observe((data) => {
     if (Boolean(Object.keys(data).length)) {
       const episode_length = data.episodes.length;
- 
+
       $elements.poster.src = useApp.url.img(data.poster);
       $elements.title.textContent = data.title;
       $elements.overview.textContent = data.description;
@@ -2532,22 +2647,57 @@ var animeId = () => {
 
     if (["streamwish"].includes(host)) {
       MediaWebUrl.streamwish({ url: url }).then((res) => {
-        if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-        else alert("Video no disponible");
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
       });
-      // MediaWeb.streamwish({ url : url }).then( res => {
-      //     if(res.body.status) mediaPlayer.open({ url : res.body.url, Hls : window.Hls });
-      //     else alert('Video no disponible')
-      // })
+    } else if (["voe"].includes(host)) {
+      MediaWebUrl.voesx({ url: url }).then((res) => {
+        if (res.status) {
+          mediaPlayer.video((video) => {
+            const $video = video;
+            const videoSrc = res.url;
+
+            if (Hls.isSupported()) {
+              const hls = (useApp.values.hls = new Hls());
+
+              hls.loadSource(videoSrc);
+              hls.attachMedia($video);
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {});
+            } else if ($video.canPlayType("application/vnd.apple.mpegurl")) {
+              $video.src = videoSrc;
+            }
+          });
+        } else alert("Video no disponible");
+      });
     } else if (["doodstream"].includes(host)) {
-      MediaWeb.doodstream({ url: url }).then((res) => {
-        if (res.body.status) mediaPlayer.open({ url: res.body.url });
-        else alert("Video no disponible");
+      MediaWebUrl.doodstream({ url: url }).then((res) => {
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
       });
     } else if (["yourupload"].includes(host)) {
       MediaWeb.yourupload({ url: url }).then((res) => {
-        if (res.body.status) mediaPlayer.open({ url: res.body.url });
-        else alert("Video no disponible");
+        if (res.body.status) {
+          mediaPlayer.video((video) => {
+            video.src = res.body.url;
+          });
+        } else alert("Video no disponible");
       });
     }
   };
@@ -2645,14 +2795,17 @@ var animeId = () => {
       $elements.itemTrueOptionVideos.innerHTML =
         '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
-      useApp.mediaPlayer.settings({
+      useApp.mediaPlayer.info({
         title: item.getAttribute("data-title").split("-").join(" "),
         description: item.getAttribute("data-description"),
-        controls: {
-          includesYes: ["*"],
-          includesNot: ["lock", "chromecast", "download"],
+      });
+
+      useApp.mediaPlayer.controls({
+        options: {
+          not: ["download"],
         },
       });
+
       fetch(useApp.url.fetch(`https://www3.animeflv.net/ver/${slug}`))
         .then((res) => res.text())
         .then((text) => {
@@ -3243,9 +3396,11 @@ var searchTypeResult = () => {
 
   useThis.function.dataLoadAnime = () => {
     fetch(
-      useApp.url.fetch(
-        `https://www3.animeflv.net/browse?q=${useThis.params.result}`
-      )
+      `https://fetch.vniox.com/get.php?url=${encodeURIComponent(
+        useApp.url.fetch(
+          `https://www3.animeflv.net/browse?q=${useThis.params.result}`
+        )
+      )}`
     )
       .then((res) => res.text())
       .then((page) => {
@@ -4466,6 +4621,14 @@ var footerVideoPlayer = () => {
     $elements.canvasVideo.style.aspectRatio = "";
   });
 
+  useThis.elements.video.addEventListener("error", (e) => {
+    console.log(e);
+    if (e.target.error.code == 3) {
+      useApp.values.hls.recoverMediaError();
+      e.target.play();
+    }
+  });
+
   useThis.elements.video.addEventListener("enterpictureinpicture", () => {
     $elements.divPreview.style.display = "none";
   });
@@ -4513,7 +4676,6 @@ var footerVideoPlayer = () => {
         datamove.allow = true;
 
         if (e.type === "touchstart") {
-          // alert(draggable.contains(e.touches[0].target));
           const index = Array.from(e.touches).findIndex((touch) =>
             draggable.contains(touch.target)
           );
