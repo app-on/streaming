@@ -4586,7 +4586,8 @@ var footerVideoPlayer = () => {
 
   $elements.buttonCloseVideo.addEventListener("click", () => {
     $elements.divPreview.style.display = "none";
-    useApp.mediaPlayer.close();
+    useThis.elements.video.src = ""
+    //useApp.mediaPlayer.close();
   });
 
   useThis.elements.video.addEventListener("play", () => {
