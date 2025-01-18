@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 var dataAppUrl = () => {
   {
@@ -83,6 +83,23 @@ var dataApp = () => {
         });
       },
     },
+    instances: {
+      IntersectionObserver: new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach((entry) => {
+            entry.target.dispatchEvent(
+              new CustomEvent("_IntersectionObserver", {
+                detail: {
+                  entry,
+                  observer,
+                },
+              })
+            );
+          });
+        },
+        { root: null, rootMargin: "0px", threshold: 0 }
+      ),
+    },
   };
 
   return config;
@@ -121,10 +138,7 @@ var routesPrivate = (page = "") => {
   const $node = document.createTextNode("");
 
   auth().then((result) => {
-    console.log(result);
-    console.log("bueno");
     if (result?.status) {
-      console.log("actualizar cookie");
       Cookie.set(useApp.auth, result.token, {
         lifetime: 60 * 60 * 24 * 7,
       });
@@ -138,18 +152,16 @@ var routesPrivate = (page = "") => {
 };
 
 var routesPublic = (page = "") => {
+  const useApp = window.dataApp;
   const $node = document.createTextNode("");
 
   auth().then((result) => {
-    console.log(result);
-    // console.log("good");
-    // return;
     if (!result?.status) {
-      // Cookie.remove(useApp.auth, {});
+      Cookie.remove(useApp.auth, {});
       return $node.replaceWith(page());
     }
 
-    //location.hash = "/";
+    location.hash = "/";
   });
 
   return $node;
@@ -472,12 +484,9 @@ var peliculaId = () => {
     const data = JSON.parse($elements.play.getAttribute("data-data"));
     $elements.itemTrueOption.showPopover();
 
-    console.log("good");
-
     $elements.itemTrueOptionVideos.innerHTML =
       '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
-    console.log(data.videos);
     Promise.all([
       // add more aditional server,
       data.videos,
@@ -568,7 +577,6 @@ var peliculaId = () => {
       $elements.itemTrueOption.hidePopover();
 
       ApiWebCuevana.serverUrl(button.getAttribute("data-url")).then((url) => {
-        console.log(url);
         useThis.functions.getLinkServer(url);
       });
 
@@ -604,6 +612,7 @@ var serieId = () => {
     },
     values: {
       isConnected: false,
+      observes: [],
     },
   };
 
@@ -819,7 +828,7 @@ var serieId = () => {
             data-season-episode="${episode.title.split(" ").pop()}"
             data-item>
               <div class="div_nmcQ0GU">
-                  <img src="" data-src="${url}">
+                  <img src="" data-src="${url}" style="display:none">
                   <span>${episode.title}</span>
                   <button class="button_HMIA4Fe"></button>
               </div>
@@ -828,9 +837,20 @@ var serieId = () => {
       })
       .join("");
 
-    Array.from($elements.episodes.querySelectorAll("img")).forEach((img) =>
-      IntersectionObserverImage.load(img, false)
-    );
+    Array.from($elements.episodes.children).forEach((child) => {
+      child.addEventListener("_IntersectionObserver", ({ detail }) => {
+        if (detail.entry.isIntersecting) {
+          detail.observer.unobserve(detail.entry.target);
+
+          const img = child.querySelector("img");
+          img.onload = () => (img.style.display = "");
+          img.src = img.dataset.src;
+        }
+      });
+
+      useApp.instances.IntersectionObserver.observe(child);
+      useThis.values.observes.push(child);
+    });
 
     if (!episodes.length) {
       $elements.episodes.innerHTML = `
@@ -937,7 +957,14 @@ var serieId = () => {
       useThis.reactivity.load.value = false;
     });
   };
-  useThis.functions.dataLoad();
+
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
 
   $elements.season.addEventListener("click", (e) => {
     const button = e.target.closest("button");
@@ -1091,6 +1118,14 @@ var serieId = () => {
     }
   });
 
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
   useApp.functions.scrollY({
     target: $elements.season.parentElement,
     events: {
@@ -1104,6 +1139,8 @@ var serieId = () => {
   });
 
   useApp.elements.meta.color.setAttribute("content", "#000000");
+  useThis.functions.dataLoad();
+
   return $element;
 };
 
@@ -1130,6 +1167,9 @@ var pelicula = () => {
       load: defineVal(true),
       Data: defineVal([]),
     },
+    values: {
+      observes: [],
+    },
     functions: {},
   };
 
@@ -1154,8 +1194,8 @@ var pelicula = () => {
                 </div>
 
             </header>
- 
-            <div class="div_BIchAsC">
+  
+            <div class="div_BIchAsC" style="scrollbar-width: none">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
                     <button data-gender="Favoritos" style="display:none;">Favoritos</button>
@@ -1188,18 +1228,6 @@ var pelicula = () => {
     $element.querySelectorAll("[id]"),
     "id",
     true
-  );
-
-  const intersectionObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(entry.target);
-          useThis.functions.dataLoad();
-        }
-      });
-    },
-    { root: null, rootMargin: "0px", threshold: 0 }
   );
 
   useThis.reactivity.load.observe((load) => {
@@ -1242,7 +1270,7 @@ var pelicula = () => {
             class="div_SQpqup7" data-item>
                      
               <div class="div_fMC1uk6">
-                  <img src="" alt="" data-src="${url}">
+                  <img src="" alt="" data-src="${url}" style="display:none">
                   <span>${slug.split("/")[0]}</span>
               </div>
               <div class="div_9nWIRZE">
@@ -1252,8 +1280,18 @@ var pelicula = () => {
           </a>    
         `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), true);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
 
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
         return element;
       })
     );
@@ -1263,7 +1301,7 @@ var pelicula = () => {
 
     if (Data.length > 23) {
       $elements.itemTrue.append($elements.itemTrueLoad);
-      intersectionObserver.observe($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
     }
   });
 
@@ -1285,56 +1323,15 @@ var pelicula = () => {
         useThis.reactivity.Data.value = data.props.pageProps.movies;
         useThis.reactivity.load.value = false;
       });
-      // let url = "";
-
-      // if ($elements.buttonsFocus.getAttribute("data-gender") == "Favoritos") {
-      //   useThis.reactivity.Data.value = JSON.parse(
-      //     localStorage.getItem("favorite_pelicula")
-      //   );
-      //   useThis.reactivity.load.value = false;
-      //   return;
-      // } else if (
-      //   $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
-      // ) {
-      //   const gender = $elements.buttonsFocus
-      //     .getAttribute("data-gender")
-      //     .split(" ")
-      //     .join("-")
-      //     .toLowerCase()
-      //     .trim();
-      //   url = useApp.url.fetch(
-      //     `https://cuevana.biz/genero/${gender}/page/${page}`
-      //   );
-      // } else {
-      //   url = useApp.url.fetch(`https://cuevana.biz/peliculas/page/${page}`);
-      // }
-
-      // fetch(url)
-      //   .then((res) => res.text())
-      //   .then((text) => {
-      //     if (text.trim() == "") {
-      //       useThis.reactivity.Data.value = [];
-      //       useThis.reactivity.load.value = false;
-      //       return;
-      //     }
-
-      //     const $text = document.createElement("div");
-      //     $text.innerHTML = text;
-
-      //     Array.from($text.querySelectorAll("img")).forEach((img) => {
-      //       img.removeAttribute("src");
-      //       img.removeAttribute("srcset");
-      //     });
-
-      //     const datas = JSON.parse(
-      //       $text.querySelector("#__NEXT_DATA__").textContent
-      //     );
-
-      //     useThis.reactivity.load.value = true;
-      //     useThis.reactivity.Data.value = datas.props.pageProps.movies;
-      //     useThis.reactivity.load.value = false;
-      //   });
     });
+  };
+
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
   };
 
   $elements.buttonsFocus.addEventListener("click", (e) => {
@@ -1352,6 +1349,7 @@ var pelicula = () => {
 
       useThis.reactivity.load.value = true;
       $elements.itemTrue.innerHTML = "";
+      useThis.functions.unobserve();
       useThis.functions.dataLoad();
 
       button.scrollIntoView({
@@ -1361,6 +1359,36 @@ var pelicula = () => {
       });
     }
   });
+
+  useApp.functions.scrollY({
+    target: $elements.buttonsFocus.parentElement,
+    events: {
+      move: () => {
+        $elements.buttonsFocus.style.pointerEvents = "none";
+      },
+      end: () => {
+        $elements.buttonsFocus.style.pointerEvents = "";
+      },
+    },
+  });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.functions.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
 
   useThis.functions.dataLoad();
   return $element;
@@ -1375,6 +1403,9 @@ var serie = () => {
       Data: defineVal([]),
     },
     functions: {},
+    values: {
+      observes: [],
+    },
   };
 
   const $element = createNodeElement(`
@@ -1428,18 +1459,6 @@ var serie = () => {
     true
   );
 
-  const intersectionObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(entry.target);
-          useThis.functions.dataLoad();
-        }
-      });
-    },
-    { root: null, rootMargin: "0px", threshold: 0 }
-  );
-
   useThis.reactivity.load.observe((load) => {
     const render = {
       itemNull: load,
@@ -1473,12 +1492,13 @@ var serie = () => {
         );
 
         const element = createNodeElement(`
-                <a href="#/${slug.split("/")[0]}/${
-          data.TMDbId
-        }" class="div_SQpqup7" data-item>
+                <a 
+                  href="#/${slug.split("/")[0]}/${data.TMDbId}" 
+                  class="div_SQpqup7" 
+                  data-item>
 
                     <div class="div_fMC1uk6">
-                        <img src="" alt="" data-src="${url}">
+                        <img src="" alt="" data-src="${url}" style="display:none">
                         <span>${slug.split("/")[0]}</span>
                     </div>
                     <div class="div_9nWIRZE">
@@ -1488,7 +1508,18 @@ var serie = () => {
                 </a>
             `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), false);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
 
         return element;
       })
@@ -1499,7 +1530,8 @@ var serie = () => {
 
     if (Data.length > 23) {
       $elements.itemTrue.append($elements.itemTrueLoad);
-      intersectionObserver.observe($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+      // intersectionObserver.observe($elements.itemTrueLoad);
     }
   });
 
@@ -1516,7 +1548,13 @@ var serie = () => {
     });
   };
 
-  useThis.functions.dataLoad();
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
 
   $elements.buttonsFocus.addEventListener("click", (e) => {
     const button = e.target.closest("button");
@@ -1536,6 +1574,26 @@ var serie = () => {
       useThis.functions.dataLoad();
     }
   });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.functions.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
+  useThis.functions.dataLoad();
 
   return $element;
 };
@@ -1970,8 +2028,6 @@ var youtubeId = () => {
       )
         .then((res) => res.json())
         .then((data) => {
-          console.log(data);
-
           if (data && !data.status) {
             dispatchEvent(
               new CustomEvent("_notification", {
@@ -1982,51 +2038,6 @@ var youtubeId = () => {
                 },
               })
             );
-          } else {
-            const url = data.url ?? data.result ?? data.d_url;
-
-            console.log(url);
-            // resizeCanvasImage($elements.poster.src, [{ both: 50 }]).then(
-            //   (response) => {
-            //     dispatchEvent(
-            //       new CustomEvent("_video", {
-            //         detail: {
-            //           header: {
-            //             from: "loadedmetadata",
-            //           },
-            //           body: {
-            //             video: {
-            //               url: url,
-            //             },
-            //             detail: {
-            //               title: $elements.title.textContent,
-            //               description: $elements.author.textContent,
-            //               image: response.images[0].url("image/webp"),
-            //               poster: $elements.poster.getAttribute("src"),
-            //               // url         : doodstream,
-            //               video: {
-            //                 server: "",
-            //                 url: url,
-            //               },
-            //             },
-            //             body_chat: {
-            //               detail: {
-            //                 id: useThis.params.id,
-            //                 type: 4,
-            //                 path: `/youtube/${useThis.params.id}`,
-            //               },
-            //               body: [
-            //                 "Youtube",
-            //                 $elements.title.textContent,
-            //                 $elements.author.textContent,
-            //               ],
-            //             },
-            //           },
-            //         },
-            //       })
-            //     );
-            //   }
-            // );
           }
         });
     }
@@ -2111,6 +2122,9 @@ var anime = () => {
       Data: defineVal([]),
     },
     functions: {},
+    values: {
+      observes: [],
+    },
     url: {
       fetch: (url) => {
         return `https://fetch.vniox.com/get.php?url=${encodeURIComponent(url)}`;
@@ -2177,18 +2191,6 @@ var anime = () => {
     true
   );
 
-  const intersectionObserver = new IntersectionObserver(
-    (entries, observer) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          observer.unobserve(entry.target);
-          useThis.functions.dataLoad();
-        }
-      });
-    },
-    { root: null, rootMargin: "0px", threshold: 0 }
-  );
-
   useThis.reactivity.load.observe((load) => {
     const render = {
       itemNull: load,
@@ -2215,7 +2217,7 @@ var anime = () => {
                   data-item>
 
                     <div class="div_fMC1uk6">
-                        <img src="" alt="" data-src="${url}">
+                        <img src="" alt="" data-src="${url}" style="display:none">
                         <span>${content.type ?? ""}</span>
                     </div>
                     <div class="div_9nWIRZE">
@@ -2225,7 +2227,18 @@ var anime = () => {
                 </a>
             `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), true);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
         return element;
       })
     );
@@ -2235,7 +2248,7 @@ var anime = () => {
 
     if (Data.length > 23) {
       $elements.itemTrue.append($elements.itemTrueLoad);
-      intersectionObserver.observe($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
     }
   });
 
@@ -2262,7 +2275,14 @@ var anime = () => {
       }
     });
   };
-  useThis.functions.dataLoad();
+
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
 
   $elements.buttonsFocus.addEventListener("click", (e) => {
     const button = e.target.closest("button");
@@ -2279,6 +2299,7 @@ var anime = () => {
 
       useThis.reactivity.load.value = true;
       $elements.itemTrue.innerHTML = "";
+      useThis.functions.unobserve();
       useThis.functions.dataLoad();
 
       button.scrollIntoView({
@@ -2288,6 +2309,24 @@ var anime = () => {
       });
     }
   });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.functions.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
 
   useApp.functions.scrollY({
     target: $elements.buttonsFocus.parentElement,
@@ -2300,6 +2339,8 @@ var anime = () => {
       },
     },
   });
+
+  useThis.functions.dataLoad();
   return $element;
 };
 
@@ -2488,8 +2529,6 @@ var animeId = () => {
         .fill()
         .map((_, i) => i + 1);
 
-      console.log();
-
       getDominantColor($elements.poster).then((result) => {
         const color = darkenHexColor(result, 50);
 
@@ -2608,57 +2647,7 @@ var animeId = () => {
       useThis.reactivity.load.value = true;
       useThis.reactivity.data.value = data;
       useThis.reactivity.load.value = false;
-      console.log(data);
     });
-
-    // fetch(
-    //   useThis.url.fetch(`https://www3.animeflv.net/anime/${useThis.params.id}`)
-    // )
-    //   .then((res) => res.text())
-    //   .then((text) => {
-    //     const $text = document.createElement("div");
-    //     $text.innerHTML = text;
-
-    //     console.log($text.outerHTML);
-
-    //     Array.from($text.querySelectorAll("script")).forEach((script) => {
-    //       if (script.innerHTML.includes("var anime_info =")) {
-    //         const stringVal = script.innerHTML
-    //           .slice(0, script.innerHTML.indexOf("$"))
-    //           .split("var")
-    //           .map((a) => (a.trim() ? `a.${a.trim()}` : ""))
-    //           .join("");
-
-    //         const objectVal = new Function(
-    //           ["const a = {}", stringVal, "return a"].join(";")
-    //         )();
-
-    //         useThis.reactivity.data.value = {
-    //           id: objectVal.anime_info[0],
-    //           title: $text.querySelector("h1.Title").textContent,
-    //           description: $text.querySelector(".Description p").textContent,
-    //           poster: `https://www3.animeflv.net${$text
-    //             .querySelector(`figure img`)
-    //             .getAttribute("src")}`,
-    //           href: `/anime/${objectVal.anime_info[2]}`,
-    //           type: $text.querySelector(".Type").textContent,
-    //           genres: Array.from($text.querySelectorAll(".Nvgnrs a")).map(
-    //             (a) => a.textContent
-    //           ),
-    //           progress: $text.querySelector(".fa-tv").textContent,
-    //           episodes: objectVal.episodes,
-    //         };
-
-    //         console.log(useThis.reactivity.data.value);
-
-    //         useThis.reactivity.load.value = false;
-    //       }
-    //     });
-
-    //     Array.from($text.querySelectorAll("img")).forEach((img) =>
-    //       img.removeAttribute("src")
-    //     );
-    //   });
   };
 
   $elements.episodes_range.addEventListener("click", (e) => {
@@ -2755,75 +2744,6 @@ var animeId = () => {
           })
           .join("");
       });
-
-      // return;
-
-      // fetch(useApp.url.fetch(`https://www3.animeflv.net/ver/${slug}`))
-      //   .then((res) => res.text())
-      //   .then((text) => {
-      //     const $text = document.createElement("div");
-      //     $text.innerHTML = text;
-
-      //     Array.from($text.querySelectorAll("script")).forEach((script) => {
-      //       const scriptInnerHTML = script.innerHTML;
-
-      //       if (scriptInnerHTML.includes("var anime_id")) {
-      //         const string1 = scriptInnerHTML.slice(
-      //           0,
-      //           scriptInnerHTML.indexOf("$(document)")
-      //         );
-      //         const string2 = [
-      //           "const data = {}",
-      //           string1.split("var").join("data . "),
-      //           "return data",
-      //         ].join(";");
-
-      //         const scriptFunction = new Function(string2);
-      //         const scriptReturn = scriptFunction();
-
-      //         return;
-
-      //         $elements.itemTrueOptionVideos.innerHTML = Object.entries(
-      //           scriptReturn.videos
-      //         )
-      //           .map((data) => {
-      //             console.log(data);
-      //             let show = true;
-
-      //             return data[1]
-      //               .map((video, index) => {
-      //                 if (index == 0) return "";
-      //                 if (!["yu", "sw"].includes(video.server)) return "";
-
-      //                 const visibility = show ? "" : "display:none";
-      //                 show = false;
-
-      //                 return `
-      //                                   <span class="span_eNUkEzu" style="${visibility}">${data[0]
-      //                   .slice(0, 3)
-      //                   .toUpperCase()}</span>
-      //                                   <button class="button_NuUj5A6" data-type="" data-url="${
-      //                                     video.code
-      //                                   }" data-quality="">
-
-      //                                       <div class="div_Z8bTLpN">
-      //                                           <span>${video.title}</span>
-      //                                           <p>${video.server}</p>
-      //                                       </div>
-
-      //                                   </button>
-      //                               `;
-      //               })
-      //               .join("");
-      //           })
-      //           .join("");
-      //       }
-      //     });
-
-      //     Array.from($text.querySelectorAll("img")).forEach((img) =>
-      //       img.removeAttribute("src")
-      //     );
-      //   });
     }
   });
 
@@ -2988,34 +2908,26 @@ var inicio = () => {
   return $element;
 };
 
-var offline = () => {
-  const $element = createNodeElement(`
+var offline = ()=>{
+    const $element  = createNodeElement(`
         <div class="offline">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512"><path d="M14,19c0,1.1-.9,2-2,2s-2-.9-2-2,.9-2,2-2,2,.9,2,2ZM1.33,7.07c-.37,.33-.73,.69-1.07,1.05-.38,.4-.35,1.04,.05,1.41,.19,.18,.44,.27,.68,.27,.27,0,.54-.11,.73-.32,.3-.32,.61-.63,.93-.92,.41-.37,.45-1,.08-1.41-.37-.41-1-.45-1.41-.08Zm5.05,4.84c-.4,.31-.77,.65-1.11,1.02-.38,.41-.35,1.04,.05,1.41,.19,.18,.44,.27,.68,.27,.27,0,.54-.11,.73-.32,.27-.29,.56-.56,.87-.8,.44-.34,.52-.97,.18-1.4-.34-.44-.97-.52-1.4-.18Zm7.21,.26c1.39,.32,2.68,1.06,3.66,2.11,.2,.21,.46,.32,.73,.32,.24,0,.49-.09,.68-.27,.4-.38,.43-1.01,.05-1.41-1.84-1.99-4.54-3.06-7.22-2.92-.02,0-.05,0-.07,0L7.24,5.83c1.52-.55,3.12-.83,4.76-.83,3.88,0,7.62,1.63,10.27,4.48,.2,.21,.46,.32,.73,.32,.24,0,.49-.09,.68-.27,.4-.38,.43-1.01,.05-1.41-3.02-3.25-7.3-5.12-11.73-5.12-2.19,0-4.31,.43-6.3,1.29L1.71,.29C1.32-.1,.68-.1,.29,.29S-.1,1.32,.29,1.71L22.29,23.71c.2,.2,.45,.29,.71,.29s.51-.1,.71-.29c.39-.39,.39-1.02,0-1.41L13.6,12.18Z"></path></svg>
             <h3>No hay conexión a internet</h3>
         </div>
     `);
+ 
+    let active = true;
+    
+    addEventListener('online', () => {
+        if( !active ) return
+        dispatchEvent( new CustomEvent('hashchange') );
+    }, { once : true });
 
-  let active = true;
+    addEventListener('hashchange', ()=> {
+        active = false;
+    }, { once : true });
 
-  addEventListener(
-    "online",
-    () => {
-      if (!active) return;
-      dispatchEvent(new CustomEvent("hashchange"));
-    },
-    { once: true }
-  );
-
-  addEventListener(
-    "hashchange",
-    () => {
-      active = false;
-    },
-    { once: true }
-  );
-
-  return $element;
+    return $element
 };
 
 var searchType = () => {
@@ -3159,8 +3071,6 @@ var searchType = () => {
   useThis.function.dataLoad();
   setTimeout(() => $elements.form.search.focus());
 
-  console.log(EncodeTemplateString.toInput());
-
   // useApp.elements.meta.color.setAttribute('content', localStorage.getItem('theme') == 'light' ? '#ffffff' : '#292929')
   return $element;
 };
@@ -3173,9 +3083,13 @@ var searchTypeResult = () => {
       load: defineVal(true),
       Data: defineVal([]),
     },
+    values: {
+      observes: [],
+    },
     function: {
       dataLoad: () => {},
     },
+    functions: {},
   };
 
   const $element = createNodeElement(`
@@ -3292,22 +3206,34 @@ var searchTypeResult = () => {
         const url = useApp.url.img(data.poster);
 
         const element = createNodeElement(`
-                    <a 
-                      href="#/anime/${data.identifier}" 
-                      class="div_SQpqup7" data-item>
-    
-                        <div class="div_fMC1uk6">
-                            <img src="" alt="" data-src="${url}">
-                            <span>${data.type ?? ""}</span>
-                        </div>
-                        <div class="div_9nWIRZE">
-                            <p>${data.title}</p>
-                        </div>
-        
-                    </a>
-                `);
+            <a 
+              href="#/anime/${data.identifier}" 
+              class="div_SQpqup7" data-item>
 
-        IntersectionObserverImage.load(element.querySelector("img"), true);
+                <div class="div_fMC1uk6">
+                    <img src="" alt="" data-src="${url}" style="display:none">
+                    <span>${data.type ?? ""}</span>
+                </div>
+                <div class="div_9nWIRZE">
+                    <p>${data.title}</p>
+                </div>
+
+            </a>
+        `);
+
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
+
         return element;
       })
     );
@@ -3339,22 +3265,34 @@ var searchTypeResult = () => {
         );
 
         const element = createNodeElement(`
-                    <a href="#/${slug.split("/")[0]}/${
-          data.TMDbId
-        }" class="div_SQpqup7" data-item>
+          <a 
+            href="#/${slug.split("/")[0]}/${data.TMDbId}" 
+            class="div_SQpqup7" 
+            data-item>
 
-                        <div class="div_fMC1uk6">
-                            <img src="" alt="" data-src="${url}">
-                            <span>${slug.split("/")[0]}</span>
-                        </div>
-                        <div class="div_9nWIRZE">
-                            <p>${data.titles.name}</p>
-                        </div>
-        
-                    </a>    
-                `);
+              <div class="div_fMC1uk6">
+                  <img src="" alt="" data-src="${url}" style="display:none">
+                  <span>${slug.split("/")[0]}</span>
+              </div>
+              <div class="div_9nWIRZE">
+                  <p>${data.titles.name}</p>
+              </div>
+      
+          </a>    
+        `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), false);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
 
         return element;
       })
@@ -3442,6 +3380,14 @@ var searchTypeResult = () => {
     }
   };
 
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
+
   $elements.buttonsFocus.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
@@ -3461,6 +3407,14 @@ var searchTypeResult = () => {
     location.hash = `/search/${useThis.params.type}/${useThis.params.result}`;
   });
 
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
   useThis.function.dataLoad();
 
   return $element;
@@ -3474,9 +3428,13 @@ var favoritos = () => {
       load: defineVal(true),
       Data: defineVal([]),
     },
+    values: {
+      observes: [],
+    },
     function: {
       dataLoad: () => {},
     },
+    functions: {},
   };
 
   const $element = createNodeElement(`
@@ -3542,41 +3500,7 @@ var favoritos = () => {
     "id",
     true
   );
-  new RenderObjectElement($elements);
-
-  useThis.reactivity.load.observe((load) => {
-    const render = {
-      itemNull: load,
-      itemFalse: !load && !Object.keys(useThis.reactivity.Data.value).length,
-      itemTrue: !load && !!Object.keys(useThis.reactivity.Data.value).length,
-    };
-
-    Object.entries(render).forEach((entries) => {
-      $elements[entries[0]].style.display = entries[1] ? "" : "none";
-    });
-  });
-
-  useThis.reactivity.Data.observe((Data) => {
-    if (Data.length) {
-      const type = $elements.buttonsFocus
-        .querySelector("button.focus")
-        .getAttribute("data-gender");
-
-      Data = Data.filter((data) => Object.keys(data).length);
-
-      if (["pelicula", "serie"].includes(type)) {
-        return useThis.function.dataRenderPeliculaSerie(Data);
-      }
-
-      if (type == "anime") {
-        return useThis.function.dataRenderAnime(Data);
-      }
-
-      if (type == "youtube") {
-        return useThis.function.dataRenderYoutube(Data);
-      }
-    }
-  });
+  // const renderObjectElement = new RenderObjectElement($elements);
 
   useThis.function.dataRenderAnime = (Data) => {
     const fragment = document.createDocumentFragment();
@@ -3584,7 +3508,6 @@ var favoritos = () => {
     fragment.append(
       ...Data.map((data) => {
         const url = useApp.url.img(data.poster);
-        console.log(data);
         const href = data.href?.split("/").pop();
 
         const element = createNodeElement(`
@@ -3594,7 +3517,7 @@ var favoritos = () => {
               data-item>
 
                 <div class="div_fMC1uk6">
-                    <img src="" alt="" data-src="${url}">
+                    <img src="" alt="" data-src="${url}" style="display:none">
                     <span>${data.type ?? ""}</span>
                 </div>
                 <div class="div_9nWIRZE">
@@ -3604,13 +3527,29 @@ var favoritos = () => {
             </a>
         `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), true);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
         return element;
       })
     );
 
     $elements.itemTrue.append(fragment);
     $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
   };
 
   useThis.function.dataRenderPeliculaSerie = (Data) => {
@@ -3641,7 +3580,7 @@ var favoritos = () => {
             class="div_SQpqup7" data-item>
 
               <div class="div_fMC1uk6">
-                  <img src="" alt="" data-src="${url}">
+                  <img src="" alt="" data-src="${url}" style="display:none">
                   <span>${slug.split("/")[0]}</span>
               </div>
               <div class="div_9nWIRZE">
@@ -3650,14 +3589,29 @@ var favoritos = () => {
           </a>    
         `);
 
-        IntersectionObserverImage.load(element.querySelector("img"), false);
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
 
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
         return element;
       })
     );
 
     $elements.itemTrue.append(fragment);
     $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
   };
 
   useThis.function.dataRenderYoutube = (Data) => {
@@ -3670,7 +3624,9 @@ var favoritos = () => {
                   class="div_EJlRW2l" data-item>
 
                     <div class="div_zcWgA0o">
-                        <img src="${data.thumbnail.thumbnails[0].url}" alt="">
+                        <img 
+                          src="${data.thumbnail.thumbnails[0].url}" 
+                          alt="">
                         <span>
                           ${data.author || data.ownerText.runs[0].text}
                         </span>
@@ -3693,7 +3649,14 @@ var favoritos = () => {
   };
 
   useThis.function.dataLoadAnime = () => {
-    fetch(useApp.url.server("/api.php?route=favorites&type=1"), {
+    const encodeQueryString = encodeQueryObject({
+      route: "favorites",
+      type: 1,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
       method: "GET",
       headers: {
         "Token-Auth": Cookie.get(useApp.auth),
@@ -3701,7 +3664,6 @@ var favoritos = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
         useThis.reactivity.load.value = true;
         useThis.reactivity.Data.value = Array.isArray(data)
           ? data.map((data) => JSON.parse(data.data_json))
@@ -3714,20 +3676,21 @@ var favoritos = () => {
   };
 
   useThis.function.dataLoadPeliculaSerie = (type) => {
-    fetch(
-      useApp.url.server(
-        `/api.php?route=favorites&type=${type == "pelicula" ? 2 : 3}`
-      ),
-      {
-        method: "GET",
-        headers: {
-          "Token-Auth": Cookie.get(useApp.auth),
-        },
-      }
-    )
+    const encodeQueryString = encodeQueryObject({
+      route: "favorites",
+      type: type == "pelicula" ? 2 : 3,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+      method: "GET",
+      headers: {
+        "Token-Auth": Cookie.get(useApp.auth),
+      },
+    })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
         useThis.reactivity.load.value = true;
         useThis.reactivity.Data.value = Array.isArray(data)
           ? data.map((data) => JSON.parse(data.data_json))
@@ -3779,6 +3742,14 @@ var favoritos = () => {
     }
   };
 
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
+
   $elements.buttonsFocus.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
@@ -3790,7 +3761,62 @@ var favoritos = () => {
       useThis.reactivity.load.value = true;
       $elements.itemTrue.innerHTML = "";
 
+      useThis.functions.unobserve();
       useThis.function.dataLoad();
+    }
+  });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.function.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
+  useThis.reactivity.load.observe((load) => {
+    const dataItem = $elements.itemTrue.querySelector("[data-item]");
+
+    const render = {
+      itemNull: load,
+      itemFalse: !load && !dataItem,
+      itemTrue: !load && !!dataItem,
+    };
+
+    Object.entries(render).forEach((entries) => {
+      $elements[entries[0]].style.display = entries[1] ? "" : "none";
+    });
+  });
+
+  useThis.reactivity.Data.observe((Data) => {
+    {
+      const type = $elements.buttonsFocus
+        .querySelector("button.focus")
+        .getAttribute("data-gender");
+
+      Data = Data.filter((data) => Object.keys(data).length);
+
+      if (["pelicula", "serie"].includes(type)) {
+        return useThis.function.dataRenderPeliculaSerie(Data);
+      }
+
+      if (type == "anime") {
+        return useThis.function.dataRenderAnime(Data);
+      }
+
+      if (type == "youtube") {
+        return useThis.function.dataRenderYoutube(Data);
+      }
     }
   });
 
@@ -3841,7 +3867,7 @@ var login = () => {
                   <span id="spanLoad">Recibir codigo</span>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-envelope"><path d="M19,1H5A5.006,5.006,0,0,0,0,6V18a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V6A5.006,5.006,0,0,0,19,1ZM5,3H19a3,3,0,0,1,2.78,1.887l-7.658,7.659a3.007,3.007,0,0,1-4.244,0L2.22,4.887A3,3,0,0,1,5,3ZM19,21H5a3,3,0,0,1-3-3V7.5L8.464,13.96a5.007,5.007,0,0,0,7.072,0L22,7.5V18A3,3,0,0,1,19,21Z"></path></svg>
               </button>
-              <a href="#/register" class="a_8hzaMUg">
+              <a href="#/register" class="a_8hzaMUg" style="display:none">
                   <span>registro</span>
                   ${useApp.icon.get("fi fi-rr-arrow-right")}
               </a>
@@ -3851,7 +3877,7 @@ var login = () => {
                 <button id="buttonBack" class="wh-40px d-flex-center" type="button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-angle-left"><path d="M17.17,24a1,1,0,0,1-.71-.29L8.29,15.54a5,5,0,0,1,0-7.08L16.46.29a1,1,0,1,1,1.42,1.42L9.71,9.88a3,3,0,0,0,0,4.24l8.17,8.17a1,1,0,0,1,0,1.42A1,1,0,0,1,17.17,24Z"></path></svg></button>
                 <h2>Ingresar codigo</h2>
               </div>
-              <div class="div_Y85zRC0">
+              <div class="div_Y85zRC0" >
                   <label class="label_ieXcceLhkyD2WGY label_0BFeKpk pointer-off" style="opacity: 0.7">
                       <input type="text" name="email" placeholder="" tabindex="-1">
                       <span>correo</span>
@@ -3862,11 +3888,11 @@ var login = () => {
                   </label>
               </div>
               <a href="#" id="aSendEmail" class="a_c305F1l">Volver a recibir codigo</a>
-              <button id="buttonSubmit" class="button_WU25psx">
+              <button id="buttonSubmit" class="button_WU25psx" >
                   <span id="spanLoad">Ingresar</span>
                   ${useApp.icon.get("fi fi-rr-arrow-right")}
               </button>
-              <a href="#/register" class="a_8hzaMUg">
+              <a href="#/register" class="a_8hzaMUg" >
                   <span>registro</span>
                   ${useApp.icon.get("fi fi-rr-arrow-right")}
               </a>
@@ -3925,7 +3951,6 @@ var login = () => {
 
   $elements.aSendEmail.addEventListener("click", (e) => {
     e.preventDefault();
-    console.log("volver a enviar codigo");
   });
 
   $elements.buttonBack.addEventListener("click", () => {
@@ -4019,7 +4044,7 @@ var register = () => {
     })
       .then((res) => res.json())
       .then((data) => {
-        console.log(data);
+        // console.log(data);
       });
 
     // console.log(body);
@@ -4042,7 +4067,11 @@ var loginKeyValue = () => {
   };
 
   const $element = createNodeElement(`<div class=""></div>`);
-  createObjectElement($element.querySelectorAll("[id]"), "id", true);
+  createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
 
   if (useThis.params.key == "code") {
     try {
@@ -4055,8 +4084,6 @@ var loginKeyValue = () => {
           email,
           code,
         };
-
-        console.log(body);
 
         fetch(useApp.url.server("/api.php?route=auth.login-email-set"), {
           method: "POST",
@@ -4079,7 +4106,7 @@ var loginKeyValue = () => {
           });
       }
     } catch (error) {
-      console.log("el codigo no es valido");
+      // console.log("el codigo no es valido");
     }
   }
 
@@ -4229,7 +4256,6 @@ var routes = () => {
   ]);
 
   addEventListener("hashchange", () => {
-    IntersectionObserverImage.clear();
     useApp.elements.meta.color.setAttribute(
       "content",
       localStorage.getItem("theme") == "light" ? "#F7F7F7" : "#000000"
@@ -4427,7 +4453,14 @@ class ElementMakeDrag {
   };
 }
 
-function calculateNewPosition(top, left, width, height, newWidth, newHeight) {
+function calculateNewPosition(
+  top,
+  left,
+  width,
+  height,
+  newWidth,
+  newHeight
+) {
   // Calcula la diferencia en tamaño para cada eje
   const deltaX = (newWidth - width) / 2;
   const deltaY = (newHeight - height) / 2;
@@ -4514,7 +4547,9 @@ var footerVideoPlayer = () => {
 
   $elements.buttonCloseVideo.addEventListener("click", () => {
     $elements.divPreview.style.display = "none";
-    useApp.mediaPlayer.close();
+    useApp.mediaPlayer.video((video) => {
+      video.src = "";
+    });
   });
 
   useThis.elements.video.addEventListener("play", () => {
@@ -4550,7 +4585,6 @@ var footerVideoPlayer = () => {
   });
 
   useThis.elements.video.addEventListener("error", (e) => {
-    console.log(e);
     if (e.target.error.code == 3) {
       useApp.values.hls.recoverMediaError();
       e.target.play();
@@ -4643,8 +4677,6 @@ var footerVideoPlayer = () => {
               e.touches[index].clientY - datamove.xy.initial.y;
           }
         } else {
-          console.log(draggable.getBoundingClientRect());
-          console.log(e.clientX);
           datamove.xy.current.x = e.clientX - datamove.xy.initial.x;
           datamove.xy.current.y = e.clientY - datamove.xy.initial.y;
         }
@@ -4724,31 +4756,39 @@ var footerVideoPlayer = () => {
       $elements.divPreviewContent.style.pointerEvents = "";
     });
 
-    draggable.addEventListener("wheel", (e) => {
-      const draggablegetBoundingClientRect = draggable.getBoundingClientRect();
+    draggable.addEventListener(
+      "wheel",
+      (e) => {
+        e.preventDefault();
 
-      draggable.style.width = `${Math.max(
-        150,
-        Math.min(draggable.offsetWidth - (e.deltaY > 0 ? 10 : -10), 1000)
-      )}px`;
+        const draggablegetBoundingClientRect =
+          draggable.getBoundingClientRect();
 
-      const draggablegetBoundingClientRect2 = draggable.getBoundingClientRect();
+        draggable.style.width = `${Math.max(
+          150,
+          Math.min(draggable.offsetWidth - (e.deltaY > 0 ? 10 : -10), 1000)
+        )}px`;
 
-      const datasss = calculateNewPosition(
-        draggablegetBoundingClientRect.top,
-        draggablegetBoundingClientRect.left,
-        draggablegetBoundingClientRect.width,
-        draggablegetBoundingClientRect.height,
-        draggablegetBoundingClientRect2.width,
-        draggablegetBoundingClientRect2.height
-      );
+        const draggablegetBoundingClientRect2 =
+          draggable.getBoundingClientRect();
 
-      draggable.style.left = `${datasss.left}px`;
-      draggable.style.top = `${datasss.top}px`;
+        const datasss = calculateNewPosition(
+          draggablegetBoundingClientRect.top,
+          draggablegetBoundingClientRect.left,
+          draggablegetBoundingClientRect.width,
+          draggablegetBoundingClientRect.height,
+          draggablegetBoundingClientRect2.width,
+          draggablegetBoundingClientRect2.height
+        );
 
-      draggable.style.right = "initial";
-      draggable.style.bottom = "initial";
-    });
+        draggable.style.left = `${datasss.left}px`;
+        draggable.style.top = `${datasss.top}px`;
+
+        draggable.style.right = "initial";
+        draggable.style.bottom = "initial";
+      },
+      { passive: false }
+    );
 
     addEventListener("resize", () => {
       if (draggable.style.left != "" || draggable.style.top != "") {
