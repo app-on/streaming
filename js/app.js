@@ -1,6 +1,22 @@
-'use strict';
+"use strict";
 
-var config = () => {
+var dataAppUrl = () => {
+  {
+    return {
+      server: (pathname = "") => {
+        return `https://api.vniox.com/streaming/${trimString(pathname).left(
+          "/"
+        )}`;
+      },
+      img: (url = "") =>
+        `https://img.vniox.com/index.php?url=${encodeURIComponent(url)}`,
+      fetch: (url = "") => url,
+      rr: (path = "") => `https://app.victor01sp.com/rr` + path,
+    };
+  }
+};
+
+var dataApp = () => {
   const config = {
     routes: new RouteHashCallback(),
     auth: "auth_Mj8Q5q3",
@@ -10,24 +26,7 @@ var config = () => {
       document.createDocumentFragment(),
       "media-player-id-608349709553889"
     ),
-    url: {
-      //https://api.vniox.com/streaming
-      //http://192.168.1.8/api/streaming
-      server: (pathname = "") => {
-        return `https://api.vniox.com/streaming/${trimString(pathname).left(
-          "/"
-        )}`;
-      },
-      img: (url = "") =>
-        `https://img.vniox.com/index.php?url=${encodeURIComponent(url)}`,
-      // fetch: (url = "") =>
-      //   `https://fetch.victor01sp.com/get.php?url=${encodeURIComponent(
-      //     url
-      //   )}`,
-      fetch: (url = "") => url,
-      rr: (path = "") => `https://app.victor01sp.com/rr` + path,
-    },
-
+    url: dataAppUrl(),
     elements: {
       meta: {
         color: document.getElementById("meta-theme-color"),
@@ -42,6 +41,47 @@ var config = () => {
     values: {
       youtubeToken: null,
       hls: null,
+    },
+    functions: {
+      scrollY: (parameters) => {
+        let isDragging = false;
+        let startX;
+        let scrollLeft;
+
+        const scrollContainer = parameters.target;
+
+        scrollContainer?.addEventListener("mousedown", (e) => {
+          isDragging = true;
+          startX = e.pageX - scrollContainer.offsetLeft;
+          scrollLeft = scrollContainer.scrollLeft;
+
+          parameters?.events?.start?.(e);
+        });
+
+        scrollContainer?.addEventListener("mouseleave", (e) => {
+          if (isDragging) {
+            isDragging = false;
+            parameters?.events?.end?.(e);
+          }
+        });
+
+        scrollContainer?.addEventListener("mouseup", (e) => {
+          if (isDragging) {
+            isDragging = false;
+            parameters?.events?.end?.(e);
+          }
+        });
+
+        scrollContainer?.addEventListener("mousemove", (e) => {
+          if (!isDragging) return;
+          e.preventDefault();
+          const x = e.pageX - scrollContainer.offsetLeft;
+          const walk = x - startX;
+          scrollContainer.scrollLeft = scrollLeft - walk;
+
+          parameters?.events?.move?.(e);
+        });
+      },
     },
   };
 
@@ -81,7 +121,10 @@ var routesPrivate = (page = "") => {
   const $node = document.createTextNode("");
 
   auth().then((result) => {
+    console.log(result);
+    console.log("bueno");
     if (result?.status) {
+      console.log("actualizar cookie");
       Cookie.set(useApp.auth, result.token, {
         lifetime: 60 * 60 * 24 * 7,
       });
@@ -95,17 +138,18 @@ var routesPrivate = (page = "") => {
 };
 
 var routesPublic = (page = "") => {
-  const useApp = window.dataApp;
   const $node = document.createTextNode("");
 
   auth().then((result) => {
     console.log(result);
+    // console.log("good");
+    // return;
     if (!result?.status) {
-      Cookie.remove(useApp.auth, {});
+      // Cookie.remove(useApp.auth, {});
       return $node.replaceWith(page());
     }
 
-    location.hash = "/";
+    //location.hash = "/";
   });
 
   return $node;
@@ -122,6 +166,9 @@ var peliculaId = () => {
       episodes: defineVal([]),
     },
     functions: {},
+    values: {
+      isConnected: false,
+    },
   };
 
   const $element = replaceNodeChildren(
@@ -131,19 +178,16 @@ var peliculaId = () => {
             <header class="header_K0hs3I0 header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/pelicula" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
-                    <h3 id="textTitle"></h3>
+                    <a href="#/pelicula" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
+                    
                 </div>
-
+                <h2 id="textTitle" style="flex: 1; text-align:center; font-size: clamp(1rem, 2vw, 2rem);"></h2>
                 <div id="divButton" class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</button>
-                    <button id="play" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
-                      "fi fi-rr-play"
-                    )}</button>
+                    <button id="favorite" class="button_lvV6qZu" style="visibility:hidden">
+                      ${useApp.icon.get("fi fi-rr-heart")}
+                    </button>
                 </div>
 
             </header>
@@ -155,7 +199,9 @@ var peliculaId = () => {
                 </div> 
                 <div id="itemTrue" class="div_hqzh2NV">
 
-                    <div class="div_rCXoNm8">
+                    
+
+                    <div class="div_rCXoNm8" style="display:none">
                         <div class="div_vm3LkIt">
                             <img id="backdrop" src="">
                         </div>
@@ -163,7 +209,7 @@ var peliculaId = () => {
                             <picture class="picture_BLSEWfU"><img id="poster" src=""></picture>
                             <div class="div_K2RbOsL">
                                 <h2 id="title"></h2>
-                                <p id="overview"></p>
+                                <p></p>
                                 <div class="div_aSwP0zW">
                                     <span id="genres"></span>
                                     <span id="duration"></span>
@@ -171,6 +217,26 @@ var peliculaId = () => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="div_cnJqhFl">
+                      <div class="div_0JOSFlg">
+                        <img id="poster" src="">
+                      </div>
+                      <button id="play" class="button_bDfhQ4b">
+                        <small>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                        </small>
+                        <span>Reproducir</span>
+                      </button>
+                      <hr class="hr_nTfcjTI">
+                      <div class="div_aSwP0zW" style="text-align:center">
+                          <span id="genres"></span>
+                          <span id="duration"></span>
+                          <span id="date"></span>
+                      </div>
+                      <hr class="hr_nTfcjTI">
+                      <p id="overview" style="text-align:center; font-size:14px"></p>
                     </div>
  
                     <div class="div_wNo9gA9" style="display:none">
@@ -243,6 +309,7 @@ var peliculaId = () => {
       $elements.poster.src = useApp.url.img(
         data.images.poster.replace("/original/", "/w342/")
       );
+      $elements.textTitle.textContent = data.titles.name;
       $elements.title.textContent = data.titles.name;
       $elements.overview.textContent = data.overview;
       $elements.genres.textContent = data.genres
@@ -298,42 +365,17 @@ var peliculaId = () => {
       )
         .then((res) => res.json())
         .then((status) => {
+          $elements.favorite.style.visibility = "";
+
           if (status != null) {
-            $elements.favorite.style.display = "";
+            useThis.values.isConnected = true;
             useThis.reactivity.isFavorite.value = status;
           }
         });
     }
   });
 
-  useThis.functions.getServerAditional = (reference) => {
-    return new Promise((resolve, reject) => {
-      const encodeQueryString = encodeQueryObject({
-        route: "/references",
-        reference,
-      });
-      fetch(
-        `https://api.victor01sp.com/streaming_server/api.php?${encodeQueryString}`
-      )
-        .then((res) => res.json())
-        .then((res) => {
-          resolve(
-            res
-              ? {
-                  "•": res.servers.map((server) => ({
-                    cyberlocker: server.server,
-                    quality: server.language,
-                    result: server.url,
-                  })),
-                }
-              : {}
-          );
-        })
-        .catch(reject);
-    });
-  };
-
-  useThis.functions.getLinkDoodstream = (url) => {
+  useThis.functions.getLinkServer = (url) => {
     const newURL = new URL(url);
     const hostSplit = newURL.host.split(".");
     const host = hostSplit.length == 3 ? hostSplit[1] : hostSplit[0];
@@ -394,102 +436,21 @@ var peliculaId = () => {
         } else alert("Video no disponible");
       });
     }
-
-    // if (["streamwish"].includes(host)) {
-    //   MediaWebUrl.streamwish({ url: url }).then((res) => {
-    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-    //     else alert("Video no disponible");
-    //   });
-    // } else if (["voe"].includes(host)) {
-    //   MediaWebUrl.voesx({ url: url }).then((res) => {
-    //     if (res.status) mediaPlayer.open({ url: res.url, Hls: window.Hls });
-    //     else alert("Video no disponible");
-    //   });
-    // } else if (["doodstream"].includes(host)) {
-    //   console.log("buscar en doodstream");
-    //   // MediaWeb.doodstream({ url : url }).then( res => {
-    //   //     if(res.body.status) mediaPlayer.open({ url : res.body.url });
-    //   //     else alert('Video no disponible')
-    //   // })
-    // }
-  };
-
-  useThis.functions.getLinkVideo = (slug) => {
-    const newURL = new URL(slug);
-
-    if (newURL.host != "player.cuevana.biz") {
-      return useThis.functions.getLinkDoodstream(slug);
-    }
-
-    fetch(useApp.url.fetch(slug))
-      .then((res) => res.text())
-      .then((text) => {
-        const $text = document.createElement("div");
-        $text.innerHTML = text;
-
-        Array.from($text.querySelectorAll("img")).forEach((img) => {
-          img.removeAttribute("src");
-          img.removeAttribute("srcset");
-        });
-
-        Array.from($text.querySelectorAll("script")).forEach((script) => {
-          if (script.innerHTML.includes("var url =")) {
-            const scriptFunction = new Function(
-              [
-                script.innerHTML.split(";").slice(0, 2).join(";").trim(),
-                "return url",
-              ].join(";")
-            );
-            const url = scriptFunction();
-
-            useThis.functions.getLinkDoodstream(url);
-          }
-        });
-      });
   };
 
   useThis.functions.dataLoad = () => {
-    fetch(
-      useApp.url.fetch(
-        [
-          "https://cuevana.biz",
-          "pelicula",
-          useThis.params.id,
-          useThis.params.id,
-        ].join("/")
-      )
-    )
-      .then((res) => res.text())
-      .then((content) => {
-        const pageElement = document.createElement("div");
-        pageElement.innerHTML = content;
-
-        Array.from(pageElement.querySelectorAll("img")).forEach((img) => {
-          img.removeAttribute("src");
-          img.removeAttribute("srcset");
-        });
-
-        const datas = JSON.parse(
-          pageElement.querySelector("#__NEXT_DATA__").textContent
-        );
-
-        if (datas.props.pageProps.thisMovie) {
-          // load.value = false
-          useThis.reactivity.data.value = {
-            ...datas.props.pageProps.thisMovie,
-            movies: Object.keys(datas.props.pageProps).reduce((prev, curr) => {
-              const array = datas.props.pageProps[curr];
-              if (Array.isArray(array)) prev[curr] = array;
-              return prev;
-            }, {}),
-          };
-
-          useThis.reactivity.load.value = false;
-        }
-
-        useThis.reactivity.load.unobserve();
-        useThis.reactivity.data.unobserve();
-      });
+    ApiWebCuevana.peliculaId(useThis.params.id).then((datas) => {
+      useThis.reactivity.load.value = true;
+      useThis.reactivity.data.value = {
+        ...datas.props.pageProps.thisMovie,
+        movies: Object.keys(datas.props.pageProps).reduce((prev, curr) => {
+          const array = datas.props.pageProps[curr];
+          if (Array.isArray(array)) prev[curr] = array;
+          return prev;
+        }, {}),
+      };
+      useThis.reactivity.load.value = false;
+    });
   };
 
   $elements.season.addEventListener("click", (e) => {
@@ -511,11 +472,14 @@ var peliculaId = () => {
     const data = JSON.parse($elements.play.getAttribute("data-data"));
     $elements.itemTrueOption.showPopover();
 
+    console.log("good");
+
     $elements.itemTrueOptionVideos.innerHTML =
       '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
+    console.log(data.videos);
     Promise.all([
-      // useThis.functions.getServerAditional(data.TMDbId),
+      // add more aditional server,
       data.videos,
     ]).then((res) => {
       const mergedObject = res.reduce((acc, obj) => ({ ...acc, ...obj }), {});
@@ -527,31 +491,31 @@ var peliculaId = () => {
           return data[1]
             .map((video) => {
               if (video.result == "") return "";
-              if (
-                !["doodstream", "streamwish", "voesx"].includes(
-                  video.cyberlocker
-                )
-              )
+              if (!["doodstream", "streamwish"].includes(video.cyberlocker))
                 return "";
 
               const visibility = show ? "" : "display:none";
               show = false;
 
               return `
-                        <span class="span_eNUkEzu" style="${visibility}">${data[0]
-                .slice(0, 3)
-                .toUpperCase()}</span>
-                        <button class="button_NuUj5A6" data-type="" data-url="${
-                          video.result
-                        }" data-quality="">
-                            
-                            <div class="div_Z8bTLpN">
-                                <span>${video.cyberlocker}</span>
-                                <p>${video.quality}</p>
-                            </div>
-                            
-                        </button>
-                    `;
+                <span 
+                  class="span_eNUkEzu" 
+                  style="${visibility}">
+                  ${data[0].slice(0, 3).toUpperCase()}
+                </span>
+                <button 
+                  class="button_NuUj5A6" 
+                  data-type="" 
+                  data-url="${video.result}" 
+                  data-quality="">
+                    
+                    <div class="div_Z8bTLpN">
+                        <span>${video.cyberlocker}</span>
+                        <p>${video.quality}</p>
+                    </div>
+                    
+                </button>
+              `;
             })
             .join("");
         })
@@ -560,6 +524,10 @@ var peliculaId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
+    if (!useThis.values.isConnected) {
+      return (location.hash = "#/login");
+    }
+
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
     const addFavorite = () => {
@@ -598,7 +566,12 @@ var peliculaId = () => {
     const button = e.target.closest("button");
     if (button) {
       $elements.itemTrueOption.hidePopover();
-      useThis.functions.getLinkVideo(button.getAttribute("data-url"));
+
+      ApiWebCuevana.serverUrl(button.getAttribute("data-url")).then((url) => {
+        console.log(url);
+        useThis.functions.getLinkServer(url);
+      });
+
       useApp.mediaPlayer.element().requestFullscreen();
     }
   });
@@ -629,6 +602,9 @@ var serieId = () => {
       data: defineVal({}),
       episodes: defineVal([]),
     },
+    values: {
+      isConnected: false,
+    },
   };
 
   const $element = replaceNodeChildren(
@@ -637,16 +613,15 @@ var serieId = () => {
             <header class="header_K0hs3I0 header_XpmKRuK header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/serie" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
-                    <h3 id="textTitle"></h3>
+                    <a href="#/serie" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                 </div>
-
+                <h2 id="title" style="flex: 1; text-align:center; font-size: clamp(1rem, 2vw, 2rem);"></h2>
                 <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</button>
+                    <button id="favorite" class="button_lvV6qZu" style="visibility:hidden">
+                      ${useApp.icon.get("fi fi-rr-heart")}
+                    </button>
                 </div>
 
             </header>
@@ -659,14 +634,14 @@ var serieId = () => {
                 </div>
                 <div id="itemTrue" class="div_4MNvoOW">
 
-                    <div class="div_rCXoNm8">
+                    <div class="div_rCXoNm8" style="display:none">
                         <div class="div_vm3LkIt">
                             <img id="backdrop" src="">
                         </div>
                         <div class="div_y6ODhoe">
                             <picture class="picture_BLSEWfU"><img id="poster" src=""></picture>
                             <div class="div_K2RbOsL">
-                                <h2 id="title"></h2>
+                                <h2 ></h2>
                                 <p id="overview"></p>
                                 <div class="div_aSwP0zW">
                                     <span id="genres"></span>
@@ -677,8 +652,28 @@ var serieId = () => {
                         </div>
                     </div>
 
+                    <div class="div_cnJqhFl">
+                      <div class="div_0JOSFlg">
+                        <img id="poster" src="">
+                      </div>
+                      <button id="play" class="button_bDfhQ4b" style="display:none">
+                        <small>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                        </small>
+                        <span>Reproducir</span>
+                      </button>
+                      <hr class="hr_nTfcjTI">
+                      <div class="div_aSwP0zW" style="text-align:center">
+                          <span id="genres"></span>
+                          <span id="duration"></span>
+                          <span id="date"></span>
+                      </div>
+                      <hr class="hr_nTfcjTI">
+                      <p id="overview" style="text-align:center; font-size:14px"></p>
+                    </div>
+
                     <div class="div_rJOqfX3">
-                        <div class="div_WslendP" >
+                        <div class="div_WslendP" style="scrollbar-width:none;">
                             <div id="season" class="div_z0PiH0E" data-season="0" data-data="[]" ></div>
                         </div>
                         <div id="episodes" class="div_2cD7Iqb"></div>
@@ -778,7 +773,7 @@ var serieId = () => {
 
       fetch(
         useApp.url.server(
-          `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
+          `/api.php?route=favorites-one&type=3&data_id=${data.TMDbId}`
         ),
         {
           method: "GET",
@@ -789,8 +784,10 @@ var serieId = () => {
       )
         .then((res) => res.json())
         .then((status) => {
+          $elements.favorite.style.visibility = "";
+
           if (status != null) {
-            $elements.favorite.style.display = "";
+            useThis.values.isConnected = true;
             useThis.reactivity.isFavorite.value = status;
           }
         });
@@ -808,33 +805,26 @@ var serieId = () => {
         : episodes.reverse();
 
     $elements.episodes.innerHTML = array
-      .map((episode) => {
-        const slug = episode.url.slug
-          .split("/")
-          .map((name, index) => {
-            if (name == "movies") return "pelicula";
-            else if (name == "series") return "serie";
-            else if (name == "seasons") return "temporada";
-            else if (name == "episodes") return "episodio";
-            return name;
-          })
-          .join("/");
-
+      .map((episode, i) => {
         const url = useApp.url.img(
           `https://cuevana.biz/_next/image?url=${episode.image}&w=384&q=75`
         );
 
+        const dataData = EncodeTemplateString.toInput(JSON.stringify(episode));
+
         return `
-                <div class="div_LKjl9J4" data-slug="https://cuevana.biz/${slug}" data-data="${EncodeTemplateString.toInput(
-          JSON.stringify(episode)
-        )}" data-item>
-                    <div class="div_nmcQ0GU">
-                        <img src="" data-src="${url}">
-                        <span>${episode.title}</span>
-                        <button class="button_HMIA4Fe"></button>
-                    </div>
-                </div> 
-            `;
+          <div 
+            class="div_LKjl9J4"  
+            data-data="${dataData}" 
+            data-season-episode="${episode.title.split(" ").pop()}"
+            data-item>
+              <div class="div_nmcQ0GU">
+                  <img src="" data-src="${url}">
+                  <span>${episode.title}</span>
+                  <button class="button_HMIA4Fe"></button>
+              </div>
+          </div> 
+        `;
       })
       .join("");
 
@@ -852,12 +842,6 @@ var serieId = () => {
                 </div>
             `;
     }
-  };
-
-  useThis.functions.getReference = (reference) => {
-    return new Promise((resolve, reject) => {
-      return resolve({});
-    });
   };
 
   useThis.functions.setLinkServer = (url) => {
@@ -947,34 +931,11 @@ var serieId = () => {
   };
 
   useThis.functions.dataLoad = () => {
-    fetch(
-      useApp.url.fetch(
-        [
-          "https://cuevana.biz",
-          "serie",
-          useThis.params.id,
-          useThis.params.id,
-        ].join("/")
-      )
-    )
-      .then((res) => res.text())
-      .then((text) => {
-        const $text = document.createElement("div");
-        $text.innerHTML = text;
-
-        Array.from($text.querySelectorAll("img")).forEach((img) => {
-          img.removeAttribute("src");
-          img.removeAttribute("srcset");
-        });
-
-        const datas = JSON.parse(
-          $text.querySelector("#__NEXT_DATA__").textContent
-        );
-        if (datas.props.pageProps.thisSerie) {
-          useThis.reactivity.data.value = datas.props.pageProps.thisSerie;
-          useThis.reactivity.load.value = false;
-        }
-      });
+    ApiWebCuevana.serieId(useThis.params.id).then((datas) => {
+      useThis.reactivity.load.value = true;
+      useThis.reactivity.data.value = datas.props.pageProps.thisSerie;
+      useThis.reactivity.load.value = false;
+    });
   };
   useThis.functions.dataLoad();
 
@@ -1013,76 +974,58 @@ var serieId = () => {
       $elements.itemTrueOptionVideos.innerHTML =
         '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
-      fetchWebElement(useApp.url.fetch(item.getAttribute("data-slug"))).then(
-        ($result) => {
-          Array.from($result.querySelectorAll("img")).forEach((img) => {
-            img.removeAttribute("src");
-            img.removeAttribute("srcset");
-          });
+      ApiWebCuevana.serieId(
+        useThis.params.id,
+        ...item.getAttribute("data-season-episode").split("x")
+      ).then((response) => {
+        useThis.val.dataInfo = response;
+        $elements.itemTrueOptionVideos.innerHTML = Object.entries(
+          response.props.pageProps.episode.videos
+        )
+          .map((data) => {
+            let show = true;
 
-          try {
-            const response = JSON.parse(
-              $result.querySelector("#__NEXT_DATA__").textContent
-            );
+            return data[1]
+              .map((video) => {
+                if (video.result == "") return "";
+                if (!["doodstream", "streamwish"].includes(video.cyberlocker))
+                  return "";
 
-            useThis.val.dataInfo = response;
-            console.log("good");
-            useThis.functions
-              .getReference(response.props.pageProps.episode.TMDbId)
-              .then((res) => {
-                console.log(res);
-                const mergedObject = [
-                  res,
-                  response.props.pageProps.episode.videos,
-                ].reduce((acc, obj) => ({ ...acc, ...obj }), {});
-                $elements.itemTrueOptionVideos.innerHTML = Object.entries(
-                  mergedObject
-                )
-                  .map((data) => {
-                    let show = true;
+                const visibility = show ? "" : "display:none";
+                show = false;
 
-                    return data[1]
-                      .map((video) => {
-                        if (video.result == "") return "";
-                        if (
-                          !["doodstream", "streamwish", "voesx"].includes(
-                            video.cyberlocker
-                          )
-                        )
-                          return "";
-
-                        const visibility = show ? "" : "display:none";
-                        show = false;
-
-                        return `
-                                    <span class="span_eNUkEzu" style="${visibility}">${data[0]
-                          .slice(0, 3)
-                          .toUpperCase()}</span>
-                                    <button class="button_NuUj5A6" data-type="" data-url="${
-                                      video.result
-                                    }" data-quality="">
-                                        
-                                        <div class="div_Z8bTLpN">
-                                            <span>${video.cyberlocker}</span>
-                                            <p>${video.quality}</p>
-                                        </div>
-                                        
-                                    </button>
-                                `;
-                      })
-                      .join("");
-                  })
-                  .join("");
-              });
-          } catch (error) {
-            // console.log(error);
-          }
-        }
-      );
+                return `
+                  <span 
+                    class="span_eNUkEzu" 
+                    style="${visibility}">
+                      ${data[0].slice(0, 3).toUpperCase()}
+                  </span>
+                  <button 
+                    class="button_NuUj5A6" 
+                    data-type="" 
+                    data-url="${video.result}" 
+                    data-quality="">
+                      
+                      <div class="div_Z8bTLpN">
+                          <span>${video.cyberlocker}</span>
+                          <p>${video.quality}</p>
+                      </div>
+                      
+                  </button>
+              `;
+              })
+              .join("");
+          })
+          .join("");
+      });
     }
   });
 
   $elements.favorite.addEventListener("click", () => {
+    if (!useThis.values.isConnected) {
+      return (location.hash = "#/login");
+    }
+
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
     const addFavorite = () => {
@@ -1120,8 +1063,6 @@ var serieId = () => {
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
-      const url = button.getAttribute("data-url");
-
       $elements.itemTrueOption.hidePopover();
       useApp.mediaPlayer.element().requestFullscreen();
 
@@ -1138,35 +1079,9 @@ var serieId = () => {
         },
       });
 
-      const newURL = new URL(url);
-
-      if (newURL.host != "player.cuevana.biz") {
-        return useThis.functions.setLinkServer(slug);
-      }
-
-      fetch(useApp.url.fetch(newURL.href))
-        .then((res) => res.text())
-        .then((text) => {
-          const $text = document.createElement("div");
-          $text.innerHTML = text;
-
-          Array.from($text.querySelectorAll("img")).forEach((img) => {
-            img.removeAttribute("src");
-            img.removeAttribute("srcset");
-          });
-
-          Array.from($text.querySelectorAll("script")).forEach((script) => {
-            if (script.innerHTML.includes("var url =")) {
-              const scriptFunction = new Function(
-                [
-                  script.innerHTML.split(";").slice(0, 2).join(";").trim(),
-                  "return url",
-                ].join(";")
-              );
-              useThis.functions.setLinkServer(scriptFunction());
-            }
-          });
-        });
+      ApiWebCuevana.serverUrl(button.getAttribute("data-url")).then((url) => {
+        useThis.functions.setLinkServer(url);
+      });
     }
   });
 
@@ -1174,6 +1089,18 @@ var serieId = () => {
     if (e.target === e.currentTarget) {
       $elements.itemTrueOption.hidePopover();
     }
+  });
+
+  useApp.functions.scrollY({
+    target: $elements.season.parentElement,
+    events: {
+      move: () => {
+        $elements.season.style.pointerEvents = "none";
+      },
+      end: () => {
+        $elements.season.style.pointerEvents = "";
+      },
+    },
   });
 
   useApp.elements.meta.color.setAttribute("content", "#000000");
@@ -1214,19 +1141,16 @@ var pelicula = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <h3 id="textTitle">Pelicula</h3>
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <a href="#/search/pelicula" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-search"
-                    )}</a>
-                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</a>
+                    <a href="#/search/pelicula" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-search")}
+                    </a>  
                 </div>
 
             </header>
@@ -1313,20 +1237,20 @@ var pelicula = () => {
         );
 
         const element = createNodeElement(`
-                <a href="#/${slug.split("/")[0]}/${
-          data.TMDbId
-        }" class="div_SQpqup7" data-item>
+          <a 
+            href="#/${slug.split("/")[0]}/${data.TMDbId}" 
+            class="div_SQpqup7" data-item>
                      
-                    <div class="div_fMC1uk6">
-                        <img src="" alt="" data-src="${url}">
-                        <span>${slug.split("/")[0]}</span>
-                    </div>
-                    <div class="div_9nWIRZE">
-                        <p>${data.titles.name}</p>
-                    </div>
+              <div class="div_fMC1uk6">
+                  <img src="" alt="" data-src="${url}">
+                  <span>${slug.split("/")[0]}</span>
+              </div>
+              <div class="div_9nWIRZE">
+                  <p>${data.titles.name}</p>
+              </div>
     
-                </a>    
-            `);
+          </a>    
+        `);
 
         IntersectionObserverImage.load(element.querySelector("img"), true);
 
@@ -1350,55 +1274,66 @@ var pelicula = () => {
           $elements.itemTrue.querySelectorAll("[data-item]").length / 24
         ) + 1;
 
-      let url = "";
+      let gender = $elements.buttonsFocus.getAttribute("data-gender");
+      gender =
+        gender != "Todos"
+          ? gender.split(" ").join("-").toLowerCase().trim()
+          : "";
 
-      if ($elements.buttonsFocus.getAttribute("data-gender") == "Favoritos") {
-        useThis.reactivity.Data.value = JSON.parse(
-          localStorage.getItem("favorite_pelicula")
-        );
+      ApiWebCuevana.pelicula(page, gender).then((data) => {
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = data.props.pageProps.movies;
         useThis.reactivity.load.value = false;
-        return;
-      } else if (
-        $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
-      ) {
-        const gender = $elements.buttonsFocus
-          .getAttribute("data-gender")
-          .split(" ")
-          .join("-")
-          .toLowerCase()
-          .trim();
-        url = useApp.url.fetch(
-          `https://cuevana.biz/genero/${gender}/page/${page}`
-        );
-      } else {
-        url = useApp.url.fetch(`https://cuevana.biz/peliculas/page/${page}`);
-      }
+      });
+      // let url = "";
 
-      fetch(url)
-        .then((res) => res.text())
-        .then((text) => {
-          if (text.trim() == "") {
-            useThis.reactivity.Data.value = [];
-            useThis.reactivity.load.value = false;
-            return;
-          }
+      // if ($elements.buttonsFocus.getAttribute("data-gender") == "Favoritos") {
+      //   useThis.reactivity.Data.value = JSON.parse(
+      //     localStorage.getItem("favorite_pelicula")
+      //   );
+      //   useThis.reactivity.load.value = false;
+      //   return;
+      // } else if (
+      //   $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
+      // ) {
+      //   const gender = $elements.buttonsFocus
+      //     .getAttribute("data-gender")
+      //     .split(" ")
+      //     .join("-")
+      //     .toLowerCase()
+      //     .trim();
+      //   url = useApp.url.fetch(
+      //     `https://cuevana.biz/genero/${gender}/page/${page}`
+      //   );
+      // } else {
+      //   url = useApp.url.fetch(`https://cuevana.biz/peliculas/page/${page}`);
+      // }
 
-          const $text = document.createElement("div");
-          $text.innerHTML = text;
+      // fetch(url)
+      //   .then((res) => res.text())
+      //   .then((text) => {
+      //     if (text.trim() == "") {
+      //       useThis.reactivity.Data.value = [];
+      //       useThis.reactivity.load.value = false;
+      //       return;
+      //     }
 
-          Array.from($text.querySelectorAll("img")).forEach((img) => {
-            img.removeAttribute("src");
-            img.removeAttribute("srcset");
-          });
+      //     const $text = document.createElement("div");
+      //     $text.innerHTML = text;
 
-          const datas = JSON.parse(
-            $text.querySelector("#__NEXT_DATA__").textContent
-          );
+      //     Array.from($text.querySelectorAll("img")).forEach((img) => {
+      //       img.removeAttribute("src");
+      //       img.removeAttribute("srcset");
+      //     });
 
-          useThis.reactivity.load.value = true;
-          useThis.reactivity.Data.value = datas.props.pageProps.movies;
-          useThis.reactivity.load.value = false;
-        });
+      //     const datas = JSON.parse(
+      //       $text.querySelector("#__NEXT_DATA__").textContent
+      //     );
+
+      //     useThis.reactivity.load.value = true;
+      //     useThis.reactivity.Data.value = datas.props.pageProps.movies;
+      //     useThis.reactivity.load.value = false;
+      //   });
     });
   };
 
@@ -1449,24 +1384,21 @@ var serie = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu"> 
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <h3 id="textTitle">Series</h3>
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <a href="#/search/serie" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-search"
-                    )}</a>
-                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</a>
+                    <a href="#/search/serie" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-search")}
+                    </a>
                 </div>
 
             </header>
 
-            <div class="div_BIchAsC">
+            <div class="div_BIchAsC" style="display:none">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
                     <button data-gender="Favoritos" style="display:none;">Favoritos</button>
@@ -1572,61 +1504,15 @@ var serie = () => {
   });
 
   useThis.functions.dataLoad = () => {
-    setTimeout(() => {
-      const page =
-        Math.floor(
-          $elements.itemTrue.querySelectorAll("[data-item]").length / 24
-        ) + 1;
+    const page =
+      Math.floor(
+        $elements.itemTrue.querySelectorAll("[data-item]").length / 24
+      ) + 1;
 
-      let url = "";
-
-      if ($elements.buttonsFocus.getAttribute("data-gender") == "Favoritos") {
-        useThis.reactivity.Data.value = JSON.parse(
-          localStorage.getItem("favorite_serie")
-        );
-        useThis.reactivity.load.value = false;
-        return;
-      } else if (
-        $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
-      ) {
-        const gender = $elements.buttonsFocus
-          .getAttribute("data-gender")
-          .split(" ")
-          .join("-")
-          .toLowerCase()
-          .trim();
-        url = useApp.url.fetch(
-          `https://cuevana.biz/genero/${gender}/page/${page}`
-        );
-      } else {
-        url = useApp.url.fetch(`https://cuevana.biz/series/page/${page}`);
-      }
-
-      fetch(url)
-        .then((res) => res.text())
-        .then((text) => {
-          if (text.trim() == "") {
-            useThis.reactivity.Data.value = [];
-            useThis.reactivity.load.value = false;
-            return;
-          }
-
-          const $text = document.createElement("div");
-          $text.innerHTML = text;
-
-          Array.from($text.querySelectorAll("img")).forEach((img) => {
-            img.removeAttribute("src");
-            img.removeAttribute("srcset");
-          });
-
-          const datas = JSON.parse(
-            $text.querySelector("#__NEXT_DATA__").textContent
-          );
-
-          useThis.reactivity.load.value = true;
-          useThis.reactivity.Data.value = datas.props.pageProps.movies;
-          useThis.reactivity.load.value = false;
-        });
+    ApiWebCuevana.serie(page).then((datas) => {
+      useThis.reactivity.load.value = true;
+      useThis.reactivity.Data.value = datas.props.pageProps.movies;
+      useThis.reactivity.load.value = false;
     });
   };
 
@@ -1672,16 +1558,16 @@ var youtube = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <h3 id="textTitle">YT Videos</h3>
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <a href="#/catalogo/search/youtube" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-search"
-                    )}</a>
+                    <a href="#/catalogo/search/youtube" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-search")}
+                    </a>
                 </div>
   
             </header>
@@ -1727,20 +1613,26 @@ var youtube = () => {
   useThis.reactivity.Data.observe((Data) => {
     $elements.itemTrue.innerHTML = Data.map((data) => {
       return `
-                <a href="#/youtube/${
-                  data.videoId
-                }" class="div_EJlRW2l" data-id="${data.videoId}" data-item>
+                <a 
+                  href="#/youtube/${data.videoId}" 
+                  class="div_EJlRW2l" 
+                  data-id="${data.videoId}" 
+                  data-item>
 
                     <div class="div_zcWgA0o">
                         <img src="${data.thumbnail.thumbnails[0].url}" alt="">
                     </div>
                     <div class="div_9nWIRZE">
-                        <span>${
-                          data.author || data.ownerText.runs[0].text
-                        }</span>
-                        <p>${
-                          data.title.runs ? data.title.runs[0].text : data.title
-                        }</p>
+                        <span>
+                          ${data.author || data.ownerText.runs[0].text}
+                        </span>
+                        <p>
+                          ${
+                            data.title.runs
+                              ? data.title.runs[0].text
+                              : data.title
+                          }
+                        </p>
                     </div>
     
                 </a>
@@ -1847,21 +1739,22 @@ var youtubeId = () => {
               <header class="header_K0hs3I0 header_26DlSFi">
   
                   <div class="div_uNg74XS">
-                      <a href="#/youtube" class="button_lvV6qZu">${useApp.icon.get(
-                        "fi fi-rr-angle-small-left"
-                      )}</a>
+                      <a href="#/youtube" class="button_lvV6qZu">
+                        ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                      </a>
                       <h3 id="textTitle"></h3>
                   </div>
   
                   <div class="div_x0cH0Hq">
-                      <button id="favorite" class="button_lvV6qZu">${useApp.icon.get(
-                        "fi fi-rr-heart"
-                      )}</button>
-                      <button id="openOption" class="button_lvV6qZu" data-id="${
-                        useThis.params.id
-                      }">${useApp.icon.get(
-      "fi fi-rr-settings-sliders"
-    )}</button>
+                    <button id="favorite" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-heart")}
+                    </button>
+                    <button 
+                        id="openOption" 
+                        class="button_lvV6qZu" 
+                        data-id="${useThis.params.id}">
+                          ${useApp.icon.get("fi fi-rr-settings-sliders")}
+                    </button>
                   </div>
   
               </header>
@@ -2232,24 +2125,21 @@ var anime = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <h3 id="textTitle">Animes</h3>
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <a href="#/search/anime" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-search"
-                    )}</a>
-                    <a href="#/favoritos" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</a>
+                    <a href="#/search/anime" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-search")}
+                    </a>
                 </div>
                
             </header>
 
-            <div class="div_BIchAsC">
+            <div class="div_BIchAsC" style="scrollbar-width: none">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
                     <button data-gender="Favoritos" style="display:none;">Favoritos</button>
@@ -2319,7 +2209,10 @@ var anime = () => {
         const url = useApp.url.img(content.poster);
 
         const element = createNodeElement(`
-                <a href="#${content.href}" class="div_SQpqup7" data-item>
+                <a 
+                  href="#/anime/${content.identifier}" 
+                  class="div_SQpqup7" 
+                  data-item>
 
                     <div class="div_fMC1uk6">
                         <img src="" alt="" data-src="${url}">
@@ -2353,62 +2246,20 @@ var anime = () => {
           $elements.itemTrue.querySelectorAll("[data-item]").length / 24
         ) + 1;
 
-      let url = "";
+      {
+        const genreArray = [];
+        const genreString = $elements.buttonsFocus.getAttribute("data-gender");
 
-      if ($elements.buttonsFocus.getAttribute("data-gender") == "Favoritos") {
-        useThis.reactivity.Data.value = JSON.parse(
-          localStorage.getItem("favorite_anime")
-        );
-        useThis.reactivity.load.value = false;
-        return;
-      } else if (
-        $elements.buttonsFocus.getAttribute("data-gender") != "Todos"
-      ) {
-        url = `https://www3.animeflv.net/browse?order=default&page=${page}&genre[]=${$elements.buttonsFocus.getAttribute(
-          "data-gender"
-        )}`;
-      } else {
-        url = `https://www3.animeflv.net/browse?page=${page}`;
-      }
-      fetch(useThis.url.fetch(url))
-        .then((res) => res.text())
-        .then((text) => {
-          if (text.trim() == "") {
-            useThis.reactivity.Data.value = [];
-            useThis.reactivity.load.value = false;
-            return;
-          }
+        if (genreString != "Todos") {
+          genreArray.push(genreString);
+        }
 
-          const $text = document.createElement("div");
-          $text.innerHTML = text;
-
-          const lis = Array.from(
-            (
-              $text.querySelector("div.TbCnAnmFlv ul.List-Animes") ||
-              $text.querySelector(".ListAnimes.AX.Rows.A03.C02.D02")
-            ).children
-          );
-
-          const array = lis.map((li) => {
-            return {
-              href: li.querySelector("a").getAttribute("href"),
-              title: li.querySelector(".Title").textContent,
-              poster: `https://animeflv.net/${li
-                .querySelector("img")
-                .getAttribute("src")
-                .replace("https://animeflv.net/", "")}`,
-              type: li.querySelector(".Type").textContent,
-            };
-          });
-
+        ApiWebAnimeflv.search({ page, genre: genreArray }).then((array) => {
           useThis.reactivity.load.value = true;
           useThis.reactivity.Data.value = array;
           useThis.reactivity.load.value = false;
-
-          Array.from($text.querySelectorAll("img")).forEach((img) =>
-            img.removeAttribute("src")
-          );
         });
+      }
     });
   };
   useThis.functions.dataLoad();
@@ -2438,6 +2289,17 @@ var anime = () => {
     }
   });
 
+  useApp.functions.scrollY({
+    target: $elements.buttonsFocus.parentElement,
+    events: {
+      move: () => {
+        $elements.buttonsFocus.style.pointerEvents = "none";
+      },
+      end: () => {
+        $elements.buttonsFocus.style.pointerEvents = "";
+      },
+    },
+  });
   return $element;
 };
 
@@ -2454,6 +2316,7 @@ var animeId = () => {
     functions: {},
     value: {
       video: null,
+      isConnected: false,
     },
     url: {
       fetch: (url) => {
@@ -2469,16 +2332,17 @@ var animeId = () => {
             <header class="header_K0hs3I0 header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/anime" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
-                    <h3 id="textTitle"></h3>
+                    <a href="#/anime" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                 </div>
 
+                <h2 id="title" style="flex: 1; text-align:center; font-size: clamp(1rem, 2vw, 2rem);"></h2>
+
                 <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu" style="display:none;">${useApp.icon.get(
-                      "fi fi-rr-heart"
-                    )}</button>
+                    <button id="favorite" class="button_lvV6qZu" style="visibility:hidden">
+                      ${useApp.icon.get("fi fi-rr-heart")}
+                    </button>
                 </div>
 
             </header>
@@ -2492,11 +2356,11 @@ var animeId = () => {
 
                 <div id="itemTrue" class="div_4MNvoOW">
 
-                    <div class="div_rCXoNm8">
+                    <div class="div_rCXoNm8" style="display:none">
                         <div class="div_y6ODhoe">
                             <picture class="picture_BLSEWfU"><img id="poster" src=""></picture>
                             <div class="div_K2RbOsL">
-                                <h2 id="title"></h2>
+                                <h2 ></h2>
                                 <p id="overview"></p>
                                 <div class="div_aSwP0zW">
                                     <span id="genres"></span>
@@ -2507,8 +2371,29 @@ var animeId = () => {
                         </div>
                     </div>
 
+                    <div class="div_cnJqhFl">
+                      <div class="div_0JOSFlg">
+                        <img id="poster" src="">
+                      </div>
+                      <button id="play" class="button_bDfhQ4b" style="display:none">
+                        <small>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                        </small>
+                        <span>Reproducir</span>
+                      </button>
+                      <hr class="hr_nTfcjTI">
+                      <div class="div_aSwP0zW" style="text-align:center">
+                          <span id="nextEpisode"></span>
+                          <span id="genres"></span>
+                          <span id="duration"></span>
+                          <span id="date"></span>
+                      </div>
+                      <hr class="hr_nTfcjTI">
+                      <p id="overview" style="text-align:center; font-size:14px"></p>
+                    </div>
+
                     <div class="div_692wB8">
-                        <div class="div_WslendP" >
+                        <div class="div_WslendP" style="scrollbar-width:none;">
                             <div id="episodes_range" class="div_z0PiH0E" data-season="0" data-data="[]"></div>
                         </div>
                         <div id="episodes" class="div_bi3qmqX"></div>
@@ -2556,22 +2441,18 @@ var animeId = () => {
 
   useThis.reactivity.data.observe((data) => {
     if (Boolean(Object.keys(data).length)) {
-      const episode_length = data.episodes.length;
+      const episode_length = data.episodes;
 
       $elements.poster.src = useApp.url.img(data.poster);
       $elements.title.textContent = data.title;
-      $elements.overview.textContent = data.description;
+      $elements.overview.textContent = data.overview;
 
       $elements.genres.textContent = data.genres
         .map((genre) => genre)
         .join(", ");
       $elements.duration.textContent = `${episode_length} episodios`;
-      $elements.date.textContent = data.progress;
-
-      // useThis.reactivity.isFavorite.value = JSON.parse(
-      //   localStorage.getItem("favorite_anime")
-      // ).some((video) => video.id == data.id);
-      // $elements.itemTrue.append(document.createTextNode(""));
+      $elements.date.textContent = data.status;
+      $elements.nextEpisode.innerHTML = `(nuevo episodio el <b>${data.nextEpisode}<b>)`;
 
       $elements.episodes_range.innerHTML = Array(
         Math.floor(episode_length / 50) + 1
@@ -2581,17 +2462,33 @@ var animeId = () => {
           const end =
             array[index + 1] !== undefined ? index * 50 + 50 : episode_length;
           const start = index * 50 + 1;
-          return `<button data-season="${index}" class="${
-            index == 0 ? "focus" : ""
-          }"><span>${start} - ${end || 50}</span>
-                </button>`;
+          return `
+          <button 
+            data-season="${index}" 
+            data-start="${start}" 
+            data-end="${end || 50}" 
+            class="${index == 0 ? "focus" : ""}">
+            <span>${start} - ${end || 50}</span>
+          </button>`;
         })
         .join("");
 
-      useThis.reactivity.episodes.value = data.episodes
-        .reverse()
-        .slice(0, 50)
-        .reverse();
+      // useThis.reactivity.episodes.value = data.episodes
+      //   .reverse()
+      //   .slice(0, 50)
+      //   .reverse();
+      // useThis.reactivity.episodes.value = Array(data.episodes)
+      //   .fill()
+      //   .map((_, i) => i + 1)
+      //   .reverse()
+      //   .slice(0, 50)
+      //   .reverse();
+
+      useThis.reactivity.episodes.value = Array(Math.min(50, data.episodes))
+        .fill()
+        .map((_, i) => i + 1);
+
+      console.log();
 
       getDominantColor($elements.poster).then((result) => {
         const color = darkenHexColor(result, 50);
@@ -2603,9 +2500,11 @@ var animeId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
+      const data_id = parseInt(data.poster.split("/").pop());
+
       fetch(
         useApp.url.server(
-          `/api.php?route=favorites-one&type=1&data_id=${data.id}`
+          `/api.php?route=favorites-one&type=1&data_id=${data_id}`
         ),
         {
           method: "GET",
@@ -2616,8 +2515,10 @@ var animeId = () => {
       )
         .then((res) => res.json())
         .then((status) => {
+          $elements.favorite.style.visibility = "";
+
           if (status != null) {
-            $elements.favorite.style.display = "";
+            useThis.value.isConnected = true;
             useThis.reactivity.isFavorite.value = status;
           }
         });
@@ -2633,8 +2534,8 @@ var animeId = () => {
     $elements.episodes.innerHTML = array
       .map((episode) => {
         return `
-                <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode[0]}" data-title="${useThis.params.id}" data-description="episodio ${episode[0]}">${episode[0]}</button> 
-            `;
+          <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode}" data-title="${useThis.params.id}" data-description="episodio ${episode}" data-episode="${episode}">${episode}</button> 
+        `;
       })
       .join("");
   });
@@ -2703,52 +2604,61 @@ var animeId = () => {
   };
 
   useThis.functions.dataLoad = () => {
-    fetch(
-      useThis.url.fetch(`https://www3.animeflv.net/anime/${useThis.params.id}`)
-    )
-      .then((res) => res.text())
-      .then((text) => {
-        const $text = document.createElement("div");
-        $text.innerHTML = text;
+    ApiWebAnimeflv.identifier(useThis.params.id).then((data) => {
+      useThis.reactivity.load.value = true;
+      useThis.reactivity.data.value = data;
+      useThis.reactivity.load.value = false;
+      console.log(data);
+    });
 
-        console.log($text.outerHTML);
+    // fetch(
+    //   useThis.url.fetch(`https://www3.animeflv.net/anime/${useThis.params.id}`)
+    // )
+    //   .then((res) => res.text())
+    //   .then((text) => {
+    //     const $text = document.createElement("div");
+    //     $text.innerHTML = text;
 
-        Array.from($text.querySelectorAll("script")).forEach((script) => {
-          if (script.innerHTML.includes("var anime_info =")) {
-            const stringVal = script.innerHTML
-              .slice(0, script.innerHTML.indexOf("$"))
-              .split("var")
-              .map((a) => (a.trim() ? `a.${a.trim()}` : ""))
-              .join("");
+    //     console.log($text.outerHTML);
 
-            const objectVal = new Function(
-              ["const a = {}", stringVal, "return a"].join(";")
-            )();
+    //     Array.from($text.querySelectorAll("script")).forEach((script) => {
+    //       if (script.innerHTML.includes("var anime_info =")) {
+    //         const stringVal = script.innerHTML
+    //           .slice(0, script.innerHTML.indexOf("$"))
+    //           .split("var")
+    //           .map((a) => (a.trim() ? `a.${a.trim()}` : ""))
+    //           .join("");
 
-            useThis.reactivity.data.value = {
-              id: objectVal.anime_info[0],
-              title: $text.querySelector("h1.Title").textContent,
-              description: $text.querySelector(".Description p").textContent,
-              poster: `https://www3.animeflv.net${$text
-                .querySelector(`figure img`)
-                .getAttribute("src")}`,
-              href: `/anime/${objectVal.anime_info[2]}`,
-              type: $text.querySelector(".Type").textContent,
-              genres: Array.from($text.querySelectorAll(".Nvgnrs a")).map(
-                (a) => a.textContent
-              ),
-              progress: $text.querySelector(".fa-tv").textContent,
-              episodes: objectVal.episodes,
-            };
+    //         const objectVal = new Function(
+    //           ["const a = {}", stringVal, "return a"].join(";")
+    //         )();
 
-            useThis.reactivity.load.value = false;
-          }
-        });
+    //         useThis.reactivity.data.value = {
+    //           id: objectVal.anime_info[0],
+    //           title: $text.querySelector("h1.Title").textContent,
+    //           description: $text.querySelector(".Description p").textContent,
+    //           poster: `https://www3.animeflv.net${$text
+    //             .querySelector(`figure img`)
+    //             .getAttribute("src")}`,
+    //           href: `/anime/${objectVal.anime_info[2]}`,
+    //           type: $text.querySelector(".Type").textContent,
+    //           genres: Array.from($text.querySelectorAll(".Nvgnrs a")).map(
+    //             (a) => a.textContent
+    //           ),
+    //           progress: $text.querySelector(".fa-tv").textContent,
+    //           episodes: objectVal.episodes,
+    //         };
 
-        Array.from($text.querySelectorAll("img")).forEach((img) =>
-          img.removeAttribute("src")
-        );
-      });
+    //         console.log(useThis.reactivity.data.value);
+
+    //         useThis.reactivity.load.value = false;
+    //       }
+    //     });
+
+    //     Array.from($text.querySelectorAll("img")).forEach((img) =>
+    //       img.removeAttribute("src")
+    //     );
+    //   });
   };
 
   $elements.episodes_range.addEventListener("click", (e) => {
@@ -2767,14 +2677,13 @@ var animeId = () => {
           .querySelectorAll("button.focus")
           .forEach((element) => element.classList.remove("focus"));
         button.classList.add("focus");
-        // $elements.season.setAttribute('data-season', button.getAttribute('data-season'))
 
-        const index = parseInt(button.getAttribute("data-season"));
-        const start = index * 50;
-        const end = start + 50;
+        const start = parseInt(button.getAttribute("data-start"));
+        const end = parseInt(button.getAttribute("data-end")) + 1;
 
-        useThis.reactivity.episodes.value =
-          useThis.reactivity.data.value.episodes.slice(start, end).reverse();
+        useThis.reactivity.episodes.value = Array(end - start)
+          .fill()
+          .map((_, i) => start + i);
 
         button.scrollIntoView({
           behavior: "smooth",
@@ -2789,7 +2698,7 @@ var animeId = () => {
     const item = e.target.closest("[data-item]");
 
     if (item) {
-      const slug = item.getAttribute("data-slug");
+      item.getAttribute("data-slug");
 
       $elements.itemTrueOption.showPopover();
       $elements.itemTrueOptionVideos.innerHTML =
@@ -2806,82 +2715,135 @@ var animeId = () => {
         },
       });
 
-      fetch(useApp.url.fetch(`https://www3.animeflv.net/ver/${slug}`))
-        .then((res) => res.text())
-        .then((text) => {
-          const $text = document.createElement("div");
-          $text.innerHTML = text;
+      ApiWebAnimeflv.identifier(
+        useThis.params.id,
+        item.getAttribute("data-episode")
+      ).then((videos) => {
+        $elements.itemTrueOptionVideos.innerHTML = Object.entries(videos)
+          .map((data) => {
+            let show = true;
 
-          Array.from($text.querySelectorAll("script")).forEach((script) => {
-            const scriptInnerHTML = script.innerHTML;
+            return data[1]
+              .map((video, index) => {
+                if (index == 0) return "";
+                if (!["yu", "sw"].includes(video.server)) return "";
 
-            if (scriptInnerHTML.includes("var anime_id")) {
-              const string1 = scriptInnerHTML.slice(
-                0,
-                scriptInnerHTML.indexOf("$(document)")
-              );
-              const string2 = [
-                "const data = {}",
-                string1.split("var").join("data . "),
-                "return data",
-              ].join(";");
+                const visibility = show ? "" : "display:none";
+                show = false;
 
-              const scriptFunction = new Function(string2);
-              const scriptReturn = scriptFunction();
+                return `
+                  <span 
+                    class="span_eNUkEzu" 
+                    style="${visibility}">
+                      ${data[0].slice(0, 3).toUpperCase()}
+                  </span>
+                  <button 
+                    class="button_NuUj5A6" 
+                    data-type="" 
+                    data-url="${video.code}" 
+                    data-quality="">
+                      
+                      <div class="div_Z8bTLpN">
+                          <span>${video.title}</span>
+                          <p>${video.server}</p>
+                      </div>
+                      
+                  </button>
+              `;
+              })
+              .join("");
+          })
+          .join("");
+      });
 
-              $elements.itemTrueOptionVideos.innerHTML = Object.entries(
-                scriptReturn.videos
-              )
-                .map((data) => {
-                  console.log(data);
-                  let show = true;
+      // return;
 
-                  return data[1]
-                    .map((video, index) => {
-                      if (index == 0) return "";
-                      if (!["yu", "sw"].includes(video.server)) return "";
+      // fetch(useApp.url.fetch(`https://www3.animeflv.net/ver/${slug}`))
+      //   .then((res) => res.text())
+      //   .then((text) => {
+      //     const $text = document.createElement("div");
+      //     $text.innerHTML = text;
 
-                      const visibility = show ? "" : "display:none";
-                      show = false;
+      //     Array.from($text.querySelectorAll("script")).forEach((script) => {
+      //       const scriptInnerHTML = script.innerHTML;
 
-                      return `
-                                        <span class="span_eNUkEzu" style="${visibility}">${data[0]
-                        .slice(0, 3)
-                        .toUpperCase()}</span>
-                                        <button class="button_NuUj5A6" data-type="" data-url="${
-                                          video.code
-                                        }" data-quality="">
-                                            
-                                            <div class="div_Z8bTLpN">
-                                                <span>${video.title}</span>
-                                                <p>${video.server}</p>
-                                            </div>
-                                            
-                                        </button>
-                                    `;
-                    })
-                    .join("");
-                })
-                .join("");
-            }
-          });
+      //       if (scriptInnerHTML.includes("var anime_id")) {
+      //         const string1 = scriptInnerHTML.slice(
+      //           0,
+      //           scriptInnerHTML.indexOf("$(document)")
+      //         );
+      //         const string2 = [
+      //           "const data = {}",
+      //           string1.split("var").join("data . "),
+      //           "return data",
+      //         ].join(";");
 
-          Array.from($text.querySelectorAll("img")).forEach((img) =>
-            img.removeAttribute("src")
-          );
-        });
+      //         const scriptFunction = new Function(string2);
+      //         const scriptReturn = scriptFunction();
+
+      //         return;
+
+      //         $elements.itemTrueOptionVideos.innerHTML = Object.entries(
+      //           scriptReturn.videos
+      //         )
+      //           .map((data) => {
+      //             console.log(data);
+      //             let show = true;
+
+      //             return data[1]
+      //               .map((video, index) => {
+      //                 if (index == 0) return "";
+      //                 if (!["yu", "sw"].includes(video.server)) return "";
+
+      //                 const visibility = show ? "" : "display:none";
+      //                 show = false;
+
+      //                 return `
+      //                                   <span class="span_eNUkEzu" style="${visibility}">${data[0]
+      //                   .slice(0, 3)
+      //                   .toUpperCase()}</span>
+      //                                   <button class="button_NuUj5A6" data-type="" data-url="${
+      //                                     video.code
+      //                                   }" data-quality="">
+
+      //                                       <div class="div_Z8bTLpN">
+      //                                           <span>${video.title}</span>
+      //                                           <p>${video.server}</p>
+      //                                       </div>
+
+      //                                   </button>
+      //                               `;
+      //               })
+      //               .join("");
+      //           })
+      //           .join("");
+      //       }
+      //     });
+
+      //     Array.from($text.querySelectorAll("img")).forEach((img) =>
+      //       img.removeAttribute("src")
+      //     );
+      //   });
     }
   });
 
   $elements.favorite.addEventListener("click", () => {
+    if (!useThis.value.isConnected) {
+      return (location.hash = "#/login");
+    }
+
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
+
+    const data_id = parseInt(
+      useThis.reactivity.data.value.poster.split("/").pop()
+    );
 
     const addFavorite = () => {
       const body = {
-        data_id: useThis.reactivity.data.value.id,
+        data_id: data_id,
         data_json: JSON.stringify(
           Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
-            if (["id", "title", "href", "poster", "type"].includes(curr[0])) {
+            if (["identifier", "title", "poster", "type"].includes(curr[0])) {
               prev[curr[0]] = curr[1];
             }
             return prev;
@@ -2926,6 +2888,18 @@ var animeId = () => {
   useApp.elements.meta.color.setAttribute("content", "#000000");
   useThis.functions.dataLoad();
 
+  useApp.functions.scrollY({
+    target: $elements.episodes_range.parentElement,
+    events: {
+      move: () => {
+        $elements.episodes_range.style.pointerEvents = "none";
+      },
+      end: () => {
+        $elements.episodes_range.style.pointerEvents = "";
+      },
+    },
+  });
+
   return $element;
 };
 
@@ -2942,9 +2916,9 @@ var inicio = () => {
                 </div>
 
                 <div class="div_x0cH0Hq">
-                    <a href="#/search/pelicula" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-search"
-                    )}</a>
+                    <a href="#/search/pelicula" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-search")}
+                    </a>
                     <a href="#/profile" class="button_lvV6qZu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-user"><path d="M12,12A6,6,0,1,0,6,6,6.006,6.006,0,0,0,12,12ZM12,2A4,4,0,1,1,8,6,4,4,0,0,1,12,2Z"></path><path d="M12,14a9.01,9.01,0,0,0-9,9,1,1,0,0,0,2,0,7,7,0,0,1,14,0,1,1,0,0,0,2,0A9.01,9.01,0,0,0,12,14Z"></path></svg></a>
                 </div>
 
@@ -3014,26 +2988,34 @@ var inicio = () => {
   return $element;
 };
 
-var offline = ()=>{
-    const $element  = createNodeElement(`
+var offline = () => {
+  const $element = createNodeElement(`
         <div class="offline">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="512" height="512"><path d="M14,19c0,1.1-.9,2-2,2s-2-.9-2-2,.9-2,2-2,2,.9,2,2ZM1.33,7.07c-.37,.33-.73,.69-1.07,1.05-.38,.4-.35,1.04,.05,1.41,.19,.18,.44,.27,.68,.27,.27,0,.54-.11,.73-.32,.3-.32,.61-.63,.93-.92,.41-.37,.45-1,.08-1.41-.37-.41-1-.45-1.41-.08Zm5.05,4.84c-.4,.31-.77,.65-1.11,1.02-.38,.41-.35,1.04,.05,1.41,.19,.18,.44,.27,.68,.27,.27,0,.54-.11,.73-.32,.27-.29,.56-.56,.87-.8,.44-.34,.52-.97,.18-1.4-.34-.44-.97-.52-1.4-.18Zm7.21,.26c1.39,.32,2.68,1.06,3.66,2.11,.2,.21,.46,.32,.73,.32,.24,0,.49-.09,.68-.27,.4-.38,.43-1.01,.05-1.41-1.84-1.99-4.54-3.06-7.22-2.92-.02,0-.05,0-.07,0L7.24,5.83c1.52-.55,3.12-.83,4.76-.83,3.88,0,7.62,1.63,10.27,4.48,.2,.21,.46,.32,.73,.32,.24,0,.49-.09,.68-.27,.4-.38,.43-1.01,.05-1.41-3.02-3.25-7.3-5.12-11.73-5.12-2.19,0-4.31,.43-6.3,1.29L1.71,.29C1.32-.1,.68-.1,.29,.29S-.1,1.32,.29,1.71L22.29,23.71c.2,.2,.45,.29,.71,.29s.51-.1,.71-.29c.39-.39,.39-1.02,0-1.41L13.6,12.18Z"></path></svg>
             <h3>No hay conexión a internet</h3>
         </div>
     `);
- 
-    let active = true;
-    
-    addEventListener('online', () => {
-        if( !active ) return
-        dispatchEvent( new CustomEvent('hashchange') );
-    }, { once : true });
 
-    addEventListener('hashchange', ()=> {
-        active = false;
-    }, { once : true });
+  let active = true;
 
-    return $element
+  addEventListener(
+    "online",
+    () => {
+      if (!active) return;
+      dispatchEvent(new CustomEvent("hashchange"));
+    },
+    { once: true }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      active = false;
+    },
+    { once: true }
+  );
+
+  return $element;
 };
 
 var searchType = () => {
@@ -3055,13 +3037,19 @@ var searchType = () => {
 
             <header class="header_K0hs3I0 header_4scHSOs">
         
-                <a class="a_t8K3Qpd" href="#/${
-                  useThis.params.type
-                }"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-angle-left"><path d="M17.17,24a1,1,0,0,1-.71-.29L8.29,15.54a5,5,0,0,1,0-7.08L16.46.29a1,1,0,1,1,1.42,1.42L9.71,9.88a3,3,0,0,0,0,4.24l8.17,8.17a1,1,0,0,1,0,1.42A1,1,0,0,1,17.17,24Z"></path></svg></a>
+                <a 
+                  class="a_t8K3Qpd" 
+                  href="#/${useThis.params.type}">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-angle-left"><path d="M17.17,24a1,1,0,0,1-.71-.29L8.29,15.54a5,5,0,0,1,0-7.08L16.46.29a1,1,0,1,1,1.42,1.42L9.71,9.88a3,3,0,0,0,0,4.24l8.17,8.17a1,1,0,0,1,0,1.42A1,1,0,0,1,17.17,24Z"></path></svg>
+                </a>
                 <form id="form" class="form_r7mvBNn" autocomplete="off" >
-                    <input type="search" name="search" value="${EncodeTemplateString.toInput(
-                      decodeURIComponent(useApp.routes.params("result") || "")
-                    )}" placeholder="buscar">
+                    <input 
+                      type="search" 
+                      name="search" 
+                      value="${EncodeTemplateString.toInput(
+                        decodeURIComponent(useApp.routes.params("result") || "")
+                      )}" 
+                      placeholder="buscar">
                     <button type="submit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-arrow-right"><path d="M23.12,9.91,19.25,6a1,1,0,0,0-1.42,0h0a1,1,0,0,0,0,1.41L21.39,11H1a1,1,0,0,0-1,1H0a1,1,0,0,0,1,1H21.45l-3.62,3.61a1,1,0,0,0,0,1.42h0a1,1,0,0,0,1.42,0l3.87-3.88A3,3,0,0,0,23.12,9.91Z"></path></svg></button>
                 </form>
 
@@ -3102,22 +3090,25 @@ var searchType = () => {
 
   useThis.reactivity.Data.observe((Data) => {
     $elements.itemTrue.innerHTML = Data.map((data) => {
+      const search = encodeURIComponent(data.search);
       return `
-                <div class="div_ywmleK1" data-item>
-                    <button class="button_YqF7ZuC" data-id="${
-                      data.id
-                    }"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-cross-small"><path d="M18,6h0a1,1,0,0,0-1.414,0L12,10.586,7.414,6A1,1,0,0,0,6,6H6A1,1,0,0,0,6,7.414L10.586,12,6,16.586A1,1,0,0,0,6,18H6a1,1,0,0,0,1.414,0L12,13.414,16.586,18A1,1,0,0,0,18,18h0a1,1,0,0,0,0-1.414L13.414,12,18,7.414A1,1,0,0,0,18,6Z"></path></svg></button>
-                    <a class="a_UrjAwYX" href="#/search/${
-                      data.type
-                    }/${encodeURIComponent(data.search)}/result">
-                        <div class="div_9OWid2W">
-                            <p>${data.search}</p>
-                            <span>${data.type}</span>
-                        </div>
-                        ${useApp.icon.get("fi fi-rr-angle-small-right")}
-                    </a>
+        <div class="div_ywmleK1" data-item>
+            <button 
+              class="button_YqF7ZuC" 
+              data-id="${data.id}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-cross-small"><path d="M18,6h0a1,1,0,0,0-1.414,0L12,10.586,7.414,6A1,1,0,0,0,6,6H6A1,1,0,0,0,6,7.414L10.586,12,6,16.586A1,1,0,0,0,6,18H6a1,1,0,0,0,1.414,0L12,13.414,16.586,18A1,1,0,0,0,18,18h0a1,1,0,0,0,0-1.414L13.414,12,18,7.414A1,1,0,0,0,18,6Z"></path></svg>
+            </button>
+            <a 
+            class="a_UrjAwYX" 
+            href="#/search/${data.type}/${search}/result">
+                <div class="div_9OWid2W">
+                    <p>${data.search}</p>
+                    <span>${data.type}</span>
                 </div>
-            `;
+                ${useApp.icon.get("fi fi-rr-angle-small-right")}
+            </a>
+        </div>
+      `;
     }).join("");
   });
 
@@ -3194,13 +3185,20 @@ var searchTypeResult = () => {
             <header class="header_K0hs3I0">
  
                 <div class="div_uNg74XS div_McPrYGP">
-                    <a href="#/search/${useThis.params.type}/${
-    useThis.params.result
-  }" class="button_lvV6qZu">${useApp.icon.get("fi fi-rr-angle-small-left")}</a>
+                    <a 
+                      href="${[
+                        "#",
+                        "search",
+                        useThis.params.type,
+                        useThis.params.result,
+                      ].join("/")}"
+                      class="button_lvV6qZu">
+                        ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <div class="div_sZZicpN">
-                        <h3 id="h3Title">${decodeURIComponent(
-                          useThis.params.result
-                        )}</h3>
+                        <h3 id="h3Title">
+                          ${decodeURIComponent(useThis.params.result)}
+                        </h3>
                         <span style="display:none">${useThis.params.type}</span>
                     </div>
                 </div>
@@ -3294,7 +3292,9 @@ var searchTypeResult = () => {
         const url = useApp.url.img(data.poster);
 
         const element = createNodeElement(`
-                    <a href="#${data.href}" class="div_SQpqup7" data-item>
+                    <a 
+                      href="#/anime/${data.identifier}" 
+                      class="div_SQpqup7" data-item>
     
                         <div class="div_fMC1uk6">
                             <img src="" alt="" data-src="${url}">
@@ -3395,96 +3395,27 @@ var searchTypeResult = () => {
   };
 
   useThis.function.dataLoadAnime = () => {
-    fetch(
-      `https://fetch.vniox.com/get.php?url=${encodeURIComponent(
-        useApp.url.fetch(
-          `https://www3.animeflv.net/browse?q=${useThis.params.result}`
-        )
-      )}`
-    )
-      .then((res) => res.text())
-      .then((page) => {
-        const elementPage = document.createElement("div");
-        elementPage.innerHTML = page;
-
-        const lis = Array.from(
-          elementPage.querySelector(".ListAnimes.AX.Rows.A03.C02.D02").children
-        );
-
-        useThis.reactivity.load.value = true;
-        useThis.reactivity.Data.value = lis.map((li) => {
-          return {
-            href: li.querySelector("a").getAttribute("href"),
-            title: li.querySelector(".Title").textContent,
-            poster: li.querySelector("img").src,
-            type: li.querySelector(".Type").textContent,
-          };
-        });
-        useThis.reactivity.load.value = false;
-
-        Array.from(elementPage.querySelectorAll("img")).forEach((img) =>
-          img.removeAttribute("src")
-        );
-      });
+    ApiWebAnimeflv.search({
+      search: decodeURIComponent(useThis.params.result),
+    }).then((array) => {
+      useThis.reactivity.load.value = true;
+      useThis.reactivity.Data.value = array;
+      useThis.reactivity.load.value = false;
+    });
   };
 
   useThis.function.dataLoadPeliculaSerie = () => {
-    fetch(
-      useApp.url.fetch(`https://cuevana.biz/search?q=${useThis.params.result}`)
-    )
-      .then((res) => res.text())
-      .then((text) => {
-        const $text = document.createElement("div");
-        $text.innerHTML = text;
-
-        Array.from($text.querySelectorAll("img")).forEach((img) => {
-          img.removeAttribute("src");
-          img.removeAttribute("srcset");
-        });
-
-        const datas = JSON.parse(
-          $text.querySelector("#__NEXT_DATA__").textContent
-        );
-
+    ApiWebCuevana.search(decodeURIComponent(useThis.params.result)).then(
+      (datas) => {
         useThis.reactivity.load.value = true;
         useThis.reactivity.Data.value = datas.props.pageProps.movies;
         useThis.reactivity.load.value = false;
-      });
+      }
+    );
   };
 
   useThis.function.dataLoadYoutube = () => {
-    fetch(
-      useApp.url.fetch(
-        `https://www.youtube.com/results?search_query=${useThis.params.result}`
-      )
-    )
-      .then((res) => res.text())
-      .then((text) => {
-        const $text = document.createElement("div");
-        $text.innerHTML = text;
-
-        Array.from($text.querySelectorAll("script, style")).forEach(
-          (script) => {
-            if (script.innerHTML.includes("var ytInitialData =")) {
-              const index = script.innerHTML.indexOf("{");
-              const lastIndex = script.innerHTML.lastIndexOf("}");
-
-              const output = JSON.parse(
-                script.innerHTML.slice(index, lastIndex + 1)
-              );
-              const contents =
-                output.contents.twoColumnSearchResultsRenderer.primaryContents
-                  .sectionListRenderer.contents[0].itemSectionRenderer.contents;
-
-              useThis.reactivity.load.value = true;
-              useThis.reactivity.Data.value = contents
-                .filter((content) => content.videoRenderer)
-                .map((content) => content.videoRenderer);
-              useThis.reactivity.load.value = false;
-            }
-          }
-        );
-      });
+    return;
   };
 
   useThis.function.dataLoad = () => {
@@ -3555,9 +3486,9 @@ var favoritos = () => {
             <header class="header_K0hs3I0">
  
                 <div class="div_uNg74XS div_McPrYGP">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <div class="div_sZZicpN">  
                         <h3>Favoritos</h3>
                         <span style="display:none">${useThis.params.type}</span>
@@ -3576,9 +3507,12 @@ var favoritos = () => {
                       // youtube: "YT Videos",
                     })
                       .map((entries, index) => {
-                        return `<button data-gender="${entries[0]}" class="${
-                          index == 0 ? "focus" : ""
-                        }">${entries[1]}</button>`;
+                        return `
+                        <button 
+                          data-gender="${entries[0]}" 
+                          class="${index == 0 ? "focus" : ""}">
+                        ${entries[1]}
+                        </button>`;
                       })
                       .join("")}
                 </div>
@@ -3587,8 +3521,8 @@ var favoritos = () => {
             <div class="div_IsTCHpN">
                 <div id="itemNull" class="loader-i" style="--color:var(--color-letter)"></div>
                 <div id="itemFalse" class="div_b14S3dH">
-                    ${useApp.icon.get("fi fi-rr-search-alt")}
-                    <h3>sin resultados</h3>
+                  ${useApp.icon.get("fi fi-rr-search-alt")}
+                  <h3>sin resultados</h3>
                 </div>
 
                 <div id="itemTrue" class="">
@@ -3650,20 +3584,25 @@ var favoritos = () => {
     fragment.append(
       ...Data.map((data) => {
         const url = useApp.url.img(data.poster);
+        console.log(data);
+        const href = data.href?.split("/").pop();
 
         const element = createNodeElement(`
-                    <a href="#${data.href}" class="div_SQpqup7" data-item>
-    
-                        <div class="div_fMC1uk6">
-                            <img src="" alt="" data-src="${url}">
-                            <span>${data.type ?? ""}</span>
-                        </div>
-                        <div class="div_9nWIRZE">
-                            <p>${data.title}</p>
-                        </div>
-        
-                    </a>
-                `);
+            <a 
+              href="#/anime/${data?.identifier ?? href}" 
+              class="div_SQpqup7" 
+              data-item>
+
+                <div class="div_fMC1uk6">
+                    <img src="" alt="" data-src="${url}">
+                    <span>${data.type ?? ""}</span>
+                </div>
+                <div class="div_9nWIRZE">
+                    <p>${data.title}</p>
+                </div>
+
+            </a>
+        `);
 
         IntersectionObserverImage.load(element.querySelector("img"), true);
         return element;
@@ -3697,21 +3636,19 @@ var favoritos = () => {
         );
 
         const element = createNodeElement(`
-                    <a href="#/${slug.split("/")[0]}/${
-          data.TMDbId
-        }" class="div_SQpqup7" data-item>
+          <a 
+            href="#/${slug.split("/")[0]}/${data.TMDbId}" 
+            class="div_SQpqup7" data-item>
 
-                        <div class="div_fMC1uk6">
-                            <img src="" alt="" data-src="${url}">
-                            <span>${slug.split("/")[0]}</span>
-                        </div>
-                        <div class="div_9nWIRZE">
-                            
-                            <p>${data.titles.name}</p>
-                        </div>
-        
-                    </a>    
-                `);
+              <div class="div_fMC1uk6">
+                  <img src="" alt="" data-src="${url}">
+                  <span>${slug.split("/")[0]}</span>
+              </div>
+              <div class="div_9nWIRZE">
+                  <p>${data.titles.name}</p>
+              </div>
+          </a>    
+        `);
 
         IntersectionObserverImage.load(element.querySelector("img"), false);
 
@@ -3728,20 +3665,22 @@ var favoritos = () => {
     fragment.append(
       ...Data.map((data) => {
         return createNodeElement(`
-                <a href="#/youtube/${
-                  data.videoId
-                }" class="div_EJlRW2l" data-item>
+                <a 
+                  href="#/youtube/${data.videoId}" 
+                  class="div_EJlRW2l" data-item>
 
                     <div class="div_zcWgA0o">
                         <img src="${data.thumbnail.thumbnails[0].url}" alt="">
-                        <span>${
-                          data.author || data.ownerText.runs[0].text
-                        }</span>
+                        <span>
+                          ${data.author || data.ownerText.runs[0].text}
+                        </span>
                     </div>
                     <div class="div_9nWIRZE">
-                        <p>${
+                      <p>
+                        ${
                           data.title.runs ? data.title.runs[0].text : data.title
-                        }</p>
+                        }
+                      </p>
                     </div>
     
                 </a>
@@ -3880,9 +3819,9 @@ var login = () => {
         <header class="header_K0hs3I0">
 
             <div class="div_uNg74XS">
-                <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                  "fi fi-rr-angle-small-left"
-                )}</a>
+                <a href="#/" class="button_lvV6qZu">
+                  ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                </a>
                 <h3 id="textTitle"></h3>
             </div>
 
@@ -4017,9 +3956,9 @@ var register = () => {
         <header class="header_K0hs3I0">
 
             <div class="div_uNg74XS">
-                <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                  "fi fi-rr-angle-small-left"
-                )}</a>
+                <a href="#/" class="button_lvV6qZu">
+                  ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                </a>
                 <h3 id="textTitle"></h3>
             </div>
 
@@ -4103,11 +4042,7 @@ var loginKeyValue = () => {
   };
 
   const $element = createNodeElement(`<div class=""></div>`);
-  createObjectElement(
-    $element.querySelectorAll("[id]"),
-    "id",
-    true
-  );
+  createObjectElement($element.querySelectorAll("[id]"), "id", true);
 
   if (useThis.params.key == "code") {
     try {
@@ -4161,9 +4096,9 @@ var profile = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">${useApp.icon.get(
-                      "fi fi-rr-angle-small-left"
-                    )}</a>
+                    <a href="#/" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
                     <h3 id="textTitle">Actualizar datos</h3>
                 </div>
 
@@ -4492,14 +4427,7 @@ class ElementMakeDrag {
   };
 }
 
-function calculateNewPosition(
-  top,
-  left,
-  width,
-  height,
-  newWidth,
-  newHeight
-) {
+function calculateNewPosition(top, left, width, height, newWidth, newHeight) {
   // Calcula la diferencia en tamaño para cada eje
   const deltaX = (newWidth - width) / 2;
   const deltaY = (newHeight - height) / 2;
@@ -4586,8 +4514,7 @@ var footerVideoPlayer = () => {
 
   $elements.buttonCloseVideo.addEventListener("click", () => {
     $elements.divPreview.style.display = "none";
-    useThis.elements.video.src = ""
-    //useApp.mediaPlayer.close();
+    useApp.mediaPlayer.close();
   });
 
   useThis.elements.video.addEventListener("play", () => {
@@ -4858,7 +4785,7 @@ addEventListener("DOMContentLoaded", () => {
     false
   );
 
-  window.dataApp = config();
+  window.dataApp = dataApp();
   theme();
 
   findElementWithRetry("request-disable-cors").then((requestDisableCors) => {

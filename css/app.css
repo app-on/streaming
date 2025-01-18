@@ -1677,6 +1677,64 @@ input {
   }
 }
 
+/* ----- PAGE -- PELICULAOTHER.CSS ----- */
+
+.div_cnJqhFl {
+  margin: 0 auto;
+  width: min(100%, 1000px);
+
+  display: grid;
+  padding: 20px;
+  gap: 20px;
+}
+
+.div_0JOSFlg {
+  margin: auto;
+  aspect-ratio: 3/4;
+  width: 200px;
+
+  display: flex;
+
+  border-radius: 15px;
+  overflow: hidden;
+
+  & img {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+  }
+}
+
+.button_bDfhQ4b {
+  margin: auto;
+  background: rgb(255 255 255 / 0.1);
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding-right: 15px;
+  border-radius: 40px;
+
+  & small {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.hr_nTfcjTI {
+  background: rgb(255 255 255 / 0.5);
+  border: none;
+
+  width: 100%;
+  height: 1.25px;
+}
+
 /* ----- PAGE -- PELICULA_SERIE.CSS ----- */
 
 .div_eRsphYD {
