@@ -19,7 +19,7 @@ var dataAppUrl = () => {
 var dataApp = () => {
   const config = {
     routes: new RouteHashCallback(),
-    auth: "auth_Mj8Q5q3",
+    auth: "auth_Mj8Q5q3_debug",
     user: null,
     icon: new IconSVG(),
     mediaPlayer: new MediaPlayer(
@@ -100,6 +100,16 @@ var dataApp = () => {
         { root: null, rootMargin: "0px", threshold: 0 }
       ),
     },
+    fetchOptions: (options = {}) => {
+      return {
+        ...options,
+        headers: {
+          "Token-Auth": Cookie.get("auth_Mj8Q5q3_debug"),
+          ...(options?.headers ?? {}),
+        },
+        method: options?.method ?? "GET",
+      };
+    },
   };
 
   return config;
@@ -110,7 +120,7 @@ var auth = () => {
     const useApp = window.dataApp;
 
     const encodeQueryString = encodeQueryObject({
-      route: "auth.session",
+      route: "token.auth",
     });
 
     if (Cookie.get(useApp.auth)) {
@@ -180,6 +190,9 @@ var peliculaId = () => {
     functions: {},
     values: {
       isConnected: false,
+      streaming: {},
+      episode: 1,
+      data_id: "",
     },
   };
 
@@ -364,24 +377,42 @@ var peliculaId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      fetch(
-        useApp.url.server(
-          `/api.php?route=favorites-one&type=2&data_id=${data.TMDbId}`
+      useThis.values.data_id = data.TMDbId;
+
+      const encodeQueryString = encodeQueryObject({
+        route: "favorites-one",
+        data_id: data.TMDbId,
+        type: 2,
+      });
+
+      const body = {
+        data_id: data.TMDbId,
+        data_json: JSON.stringify(
+          Object.entries(data).reduce((prev, curr) => {
+            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          }, {})
         ),
-        {
-          method: "GET",
-          headers: {
-            "Token-Auth": Cookie.get(useApp.auth),
-          },
-        }
+        type: 2,
+      };
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "POST",
+          body: JSON.stringify(body),
+        })
       )
         .then((res) => res.json())
-        .then((status) => {
+        .then((data) => {
+          useThis.values.streaming = data;
           $elements.favorite.style.visibility = "";
 
-          if (status != null) {
+          if (data != null) {
             useThis.values.isConnected = true;
-            useThis.reactivity.isFavorite.value = status;
+            useThis.reactivity.isFavorite.value = data?.favorite;
           }
         });
     }
@@ -433,9 +464,10 @@ var peliculaId = () => {
       });
     } else if (["doodstream"].includes(host)) {
       MediaWebUrl.doodstream({ url: url }).then((res) => {
-        if (res.body.status) {
+        console.log(res);
+        if (res.status) {
           mediaPlayer.video((video) => {
-            video.src = res.body.url;
+            video.src = res.url;
           });
         } else alert("Video no disponible");
       });
@@ -462,6 +494,73 @@ var peliculaId = () => {
         }, {}),
       };
       useThis.reactivity.load.value = false;
+    });
+  };
+
+  useThis.functions.updateHistory = (currentTime) => {
+    const encodeQueryString = encodeQueryObject({
+      route: "update-history-view",
+      episode: useThis.values.episode,
+      time_view: currentTime,
+      datetime: Date.now(),
+      data_id: useThis.values.data_id,
+      type: 2,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        // if (data?.status) {
+        //   useThis.reactivity.isFavorite.value = data.type == 1;
+        // }
+      });
+  };
+
+  useThis.functions.updateHistoryVideo = () => {
+    useApp.mediaPlayer.video((video) => {
+      let times = {};
+      let status = false;
+
+      video.src = "";
+
+      video.onloadedmetadata = () => {
+        times = {};
+        status = false;
+
+        const currentTime =
+          parseInt(
+            useThis.values.streaming?.episodes?.[useThis.values.episode]
+          ) || 0;
+
+        video.currentTime = currentTime;
+      };
+
+      video.ontimeupdate = (e) => {
+        if (status) {
+          const num = Math.floor(e.target.currentTime);
+
+          if (num > 0 && num % 15 == 0 && !times[num]) {
+            times[num] = true;
+            useThis.functions.updateHistory(num);
+          }
+        }
+      };
+
+      video.onseeked = () => {
+        const currentTime = Math.floor(video.currentTime);
+        useThis.functions.updateHistory(currentTime);
+
+        times = {};
+        times[currentTime] = true;
+
+        status = true;
+      };
     });
   };
 
@@ -533,42 +632,30 @@ var peliculaId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
-    if (!useThis.values.isConnected) {
-      return (location.hash = "#/login");
-    }
+    // if (!useThis.values.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
 
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
-    const addFavorite = () => {
-      const body = {
-        data_id: useThis.reactivity.data.value.TMDbId,
-        data_json: JSON.stringify(
-          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
-            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
-              prev[curr[0]] = curr[1];
-            }
-            return prev;
-          }, {})
-        ),
-        type: 2,
-      };
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-favorites",
+      data_id: useThis.reactivity.data.value.TMDbId,
+      type: 2,
+    });
 
-      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
-        method: "POST",
-        headers: {
-          "Token-Auth": Cookie.get(useApp.auth),
-        },
-        body: JSON.stringify(body),
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
       })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.status) {
-            useThis.reactivity.isFavorite.value = data.toggle == 1;
-          }
-        });
-    };
-
-    addFavorite();
+    )
+      .then((res) => res.text())
+      .then((data) => {
+        if (data?.status) {
+          useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
@@ -581,6 +668,7 @@ var peliculaId = () => {
       });
 
       useApp.mediaPlayer.element().requestFullscreen();
+      useThis.functions.updateHistoryVideo();
     }
   });
 
@@ -613,6 +701,9 @@ var serieId = () => {
     values: {
       isConnected: false,
       observes: [],
+      streaming: {},
+      episode: -1,
+      data_id: "",
     },
   };
 
@@ -736,6 +827,7 @@ var serieId = () => {
   });
 
   useThis.reactivity.data.observe((data) => {
+    console.log(data);
     if (Boolean(Object.keys(data).length)) {
       // $elements.backdrop.src  = useApp.url.img( `https://cuevana.biz/_next/image?url=${ data.images.backdrop }&w=828&q=75` )
       $elements.poster.src = useApp.url.img(
@@ -780,24 +872,42 @@ var serieId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      fetch(
-        useApp.url.server(
-          `/api.php?route=favorites-one&type=3&data_id=${data.TMDbId}`
+      useThis.values.data_id = data.TMDbId;
+
+      const encodeQueryString = encodeQueryObject({
+        route: "favorites-one",
+        data_id: data.TMDbId,
+        type: 3,
+      });
+
+      const body = {
+        data_id: data.TMDbId,
+        data_json: JSON.stringify(
+          Object.entries(data).reduce((prev, curr) => {
+            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          }, {})
         ),
-        {
-          method: "GET",
-          headers: {
-            "Token-Auth": Cookie.get(useApp.auth),
-          },
-        }
+        type: 3,
+      };
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "POST",
+          body: JSON.stringify(body),
+        })
       )
         .then((res) => res.json())
-        .then((status) => {
+        .then((data) => {
+          useThis.values.streaming = data;
           $elements.favorite.style.visibility = "";
 
-          if (status != null) {
+          if (data != null) {
             useThis.values.isConnected = true;
-            useThis.reactivity.isFavorite.value = status;
+            useThis.reactivity.isFavorite.value = data?.favorite;
           }
         });
     }
@@ -814,7 +924,7 @@ var serieId = () => {
         : episodes.reverse();
 
     $elements.episodes.innerHTML = array
-      .map((episode, i) => {
+      .map((episode) => {
         const url = useApp.url.img(
           `https://cuevana.biz/_next/image?url=${episode.image}&w=384&q=75`
         );
@@ -825,7 +935,8 @@ var serieId = () => {
           <div 
             class="div_LKjl9J4"  
             data-data="${dataData}" 
-            data-season-episode="${episode.title.split(" ").pop()}"
+            data-season="${seasons[index].number}"
+            data-episode="${episode.number}"
             data-item>
               <div class="div_nmcQ0GU">
                   <img src="" data-src="${url}" style="display:none">
@@ -966,6 +1077,73 @@ var serieId = () => {
     useThis.values.observes = [];
   };
 
+  useThis.functions.updateHistory = (currentTime) => {
+    const encodeQueryString = encodeQueryObject({
+      route: "update-history-view",
+      episode: useThis.values.episode,
+      time_view: currentTime,
+      datetime: Date.now(),
+      data_id: useThis.values.data_id,
+      type: 3,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        console.log(data);
+        // if (data?.status) {
+        //   useThis.reactivity.isFavorite.value = data.type == 1;
+        // }
+      });
+  };
+
+  useThis.functions.updateHistoryVideo = () => {
+    useApp.mediaPlayer.video((video) => {
+      let times = {};
+      let status = false;
+
+      video.src = "";
+
+      video.onloadedmetadata = () => {
+        times = {};
+        status = false;
+
+        const currentTime =
+          parseInt(
+            useThis.values.streaming?.episodes?.[useThis.values.episode]
+          ) || 0;
+
+        video.currentTime = currentTime;
+      };
+
+      video.ontimeupdate = (e) => {
+        if (status) {
+          const num = Math.floor(e.target.currentTime);
+
+          if (num > 0 && num % 15 == 0 && !times[num]) {
+            times[num] = true;
+            useThis.functions.updateHistory(num);
+          }
+        }
+      };
+
+      video.onseeked = () => {
+        const currentTime = Math.floor(video.currentTime);
+        useThis.functions.updateHistory(currentTime);
+
+        times = {};
+        times[currentTime] = true;
+
+        status = true;
+      };
+    });
+  };
+
   $elements.season.addEventListener("click", (e) => {
     const button = e.target.closest("button");
 
@@ -998,12 +1176,17 @@ var serieId = () => {
 
     if (item) {
       $elements.itemTrueOption.showPopover();
+      $elements.itemTrueOptionVideos.setAttribute(
+        "data-episode",
+        `${item.dataset.season}-${item.dataset.episode}`
+      );
       $elements.itemTrueOptionVideos.innerHTML =
         '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
       ApiWebCuevana.serieId(
         useThis.params.id,
-        ...item.getAttribute("data-season-episode").split("x")
+        item.getAttribute("data-season"),
+        item.getAttribute("data-episode")
       ).then((response) => {
         useThis.val.dataInfo = response;
         $elements.itemTrueOptionVideos.innerHTML = Object.entries(
@@ -1049,37 +1232,42 @@ var serieId = () => {
   });
 
   $elements.favorite.addEventListener("click", () => {
-    if (!useThis.values.isConnected) {
-      return (location.hash = "#/login");
-    }
+    // if (!useThis.values.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
 
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
     const addFavorite = () => {
-      const body = {
+      const encodeQueryString = encodeQueryObject({
+        route: "toggle-favorites",
         data_id: useThis.reactivity.data.value.TMDbId,
-        data_json: JSON.stringify(
-          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
-            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
-              prev[curr[0]] = curr[1];
-            }
-            return prev;
-          }, {})
-        ),
         type: 3,
-      };
+      });
 
-      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
-        method: "POST",
-        headers: {
-          "Token-Auth": Cookie.get(useApp.auth),
-        },
-        body: JSON.stringify(body),
-      })
+      // const body = {
+      //   data_id: useThis.reactivity.data.value.TMDbId,
+      //   data_json: JSON.stringify(
+      //     Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
+      //       if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+      //         prev[curr[0]] = curr[1];
+      //       }
+      //       return prev;
+      //     }, {})
+      //   ),
+      //   type: 3,
+      // };
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "GET",
+        })
+      )
         .then((res) => res.json())
         .then((data) => {
           if (data?.status) {
-            useThis.reactivity.isFavorite.value = data.toggle == 1;
+            useThis.reactivity.isFavorite.value = data.type == 1;
           }
         });
     };
@@ -1090,8 +1278,11 @@ var serieId = () => {
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
+      useThis.values.episode = $elements.itemTrueOptionVideos.dataset.episode;
+
       $elements.itemTrueOption.hidePopover();
       useApp.mediaPlayer.element().requestFullscreen();
+      useThis.functions.updateHistoryVideo();
 
       useApp.mediaPlayer.info({
         title: useThis.val.dataInfo.props.pageProps.episode.title,
@@ -2358,6 +2549,9 @@ var animeId = () => {
     value: {
       video: null,
       isConnected: false,
+      streaming: {},
+      episode: -1,
+      data_id: "",
     },
     url: {
       fetch: (url) => {
@@ -2514,17 +2708,6 @@ var animeId = () => {
         })
         .join("");
 
-      // useThis.reactivity.episodes.value = data.episodes
-      //   .reverse()
-      //   .slice(0, 50)
-      //   .reverse();
-      // useThis.reactivity.episodes.value = Array(data.episodes)
-      //   .fill()
-      //   .map((_, i) => i + 1)
-      //   .reverse()
-      //   .slice(0, 50)
-      //   .reverse();
-
       useThis.reactivity.episodes.value = Array(Math.min(50, data.episodes))
         .fill()
         .map((_, i) => i + 1);
@@ -2540,26 +2723,51 @@ var animeId = () => {
       });
 
       const data_id = parseInt(data.poster.split("/").pop());
+      useThis.value.data_id = data_id;
+
+      const body = {
+        data_id: data_id,
+        data_json: JSON.stringify(
+          Object.entries(data).reduce(
+            (prev, curr) => {
+              if (["identifier", "title", "poster", "type"].includes(curr[0])) {
+                prev[curr[0]] = curr[1];
+              }
+              return prev;
+            },
+            {
+              id: data_id,
+            }
+          )
+        ),
+        type: 1,
+      };
 
       fetch(
         useApp.url.server(
           `/api.php?route=favorites-one&type=1&data_id=${data_id}`
         ),
-        {
-          method: "GET",
-          headers: {
-            "Token-Auth": Cookie.get(useApp.auth),
-          },
-        }
+        useApp.fetchOptions({
+          method: "POST",
+          body: JSON.stringify(body),
+        })
       )
         .then((res) => res.json())
-        .then((status) => {
+        .then((data) => {
+          useThis.value.streaming = data;
           $elements.favorite.style.visibility = "";
 
-          if (status != null) {
+          if (data != null) {
             useThis.value.isConnected = true;
-            useThis.reactivity.isFavorite.value = status;
+            useThis.reactivity.isFavorite.value = data?.favorite;
           }
+
+          Array.from($elements.episodes.children).forEach((child) => {
+            const episode = child.dataset.episode;
+            if (data.episodes[episode] != undefined) {
+              child.querySelector("input").checked = true;
+            }
+          });
         });
     }
   });
@@ -2572,8 +2780,16 @@ var animeId = () => {
 
     $elements.episodes.innerHTML = array
       .map((episode) => {
+        const checked =
+          useThis.value.streaming?.episodes?.[episode] != undefined
+            ? "checked"
+            : "";
+
         return `
-          <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode}" data-title="${useThis.params.id}" data-description="episodio ${episode}" data-episode="${episode}">${episode}</button> 
+          <div data-episode="${episode}" style="display:flex; background: rgb(255 255 255 / 0.1); border-radius:5px">
+            <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode}" data-title="${useThis.params.id}" data-description="episodio ${episode}" data-episode="${episode}" style="flex:1; background: none;">${episode}</button>
+            <label style="width:40px; height:40px; display:flex"><input type="checkbox" data-episode="${episode}" style="margin:auto" ${checked}></label> 
+          </div>
         `;
       })
       .join("");
@@ -2650,6 +2866,72 @@ var animeId = () => {
     });
   };
 
+  useThis.functions.updateHistory = (currentTime) => {
+    const encodeQueryString = encodeQueryObject({
+      route: "update-history-view",
+      episode: useThis.value.episode,
+      time_view: currentTime,
+      datetime: Date.now(),
+      data_id: useThis.value.data_id,
+      type: 1,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.status) {
+          useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
+  };
+
+  useThis.functions.updateHistoryVideo = () => {
+    useApp.mediaPlayer.video((video) => {
+      let times = {};
+      let status = false;
+
+      video.src = "";
+
+      video.onloadedmetadata = () => {
+        times = {};
+        status = false;
+
+        const currentTime =
+          parseInt(
+            useThis.value.streaming?.episodes?.[useThis.value.episode]
+          ) || 0;
+
+        video.currentTime = currentTime;
+      };
+
+      video.ontimeupdate = (e) => {
+        if (status) {
+          const num = Math.floor(e.target.currentTime);
+
+          if (num > 0 && num % 15 == 0 && !times[num]) {
+            times[num] = true;
+            useThis.functions.updateHistory(num);
+          }
+        }
+      };
+
+      video.onseeked = () => {
+        const currentTime = Math.floor(video.currentTime);
+        useThis.functions.updateHistory(currentTime);
+
+        times = {};
+        times[currentTime] = true;
+
+        status = true;
+      };
+    });
+  };
+
   $elements.episodes_range.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
@@ -2685,11 +2967,16 @@ var animeId = () => {
 
   $elements.episodes.addEventListener("click", (e) => {
     const item = e.target.closest("[data-item]");
+    const input = e.target.closest("input");
 
     if (item) {
-      item.getAttribute("data-slug");
-
       $elements.itemTrueOption.showPopover();
+
+      $elements.itemTrueOptionVideos.setAttribute(
+        "data-episode",
+        item.dataset.episode
+      );
+
       $elements.itemTrueOptionVideos.innerHTML =
         '<div class="loader-i m-auto g-col-full" style="--color:var(--color-letter); padding: 20px 0"></div>';
 
@@ -2745,57 +3032,71 @@ var animeId = () => {
           .join("");
       });
     }
+
+    if (input) {
+      // useThis.value.episode = input.dataset.episode;
+
+      const encodeQueryString = encodeQueryObject({
+        route: "toggle-history-view",
+        episode: input.dataset.episode,
+        datetime: Date.now(),
+        data_id: useThis.value.data_id,
+        type: 1,
+      });
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "GET",
+        })
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data);
+          // if (data?.status) {
+          //   useThis.reactivity.isFavorite.value = data.type == 1;
+          // }
+        });
+    }
   });
 
   $elements.favorite.addEventListener("click", () => {
-    if (!useThis.value.isConnected) {
-      return (location.hash = "#/login");
-    }
+    // if (!useThis.value.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
 
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
-    const data_id = parseInt(
-      useThis.reactivity.data.value.poster.split("/").pop()
-    );
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-favorites",
+      data_id: useThis.value.data_id,
+      type: 1,
+    });
 
-    const addFavorite = () => {
-      const body = {
-        data_id: data_id,
-        data_json: JSON.stringify(
-          Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
-            if (["identifier", "title", "poster", "type"].includes(curr[0])) {
-              prev[curr[0]] = curr[1];
-            }
-            return prev;
-          }, {})
-        ),
-        type: 1,
-      };
-
-      fetch(useApp.url.server("/api.php?route=toggle-favorites"), {
-        method: "POST",
-        headers: {
-          "Token-Auth": Cookie.get(useApp.auth),
-        },
-        body: JSON.stringify(body),
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
       })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data?.status) {
-            useThis.reactivity.isFavorite.value = data.toggle == 1;
-          }
-        });
-    };
-
-    addFavorite();
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.status) {
+          useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
     const button = e.target.closest("button");
     if (button) {
+      useThis.value.episode = $elements.itemTrueOptionVideos.dataset.episode;
+
       $elements.itemTrueOption.hidePopover();
       useThis.functions.setLinkServer(button.getAttribute("data-url"));
       useApp.mediaPlayer.element().requestFullscreen();
+
+      useThis.functions.updateHistoryVideo();
     }
   });
 
@@ -2836,6 +3137,9 @@ var inicio = () => {
                 </div>
 
                 <div class="div_x0cH0Hq">
+                    <a href="#/favoritos" class="button_lvV6qZu">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-heart"><path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"></path></svg>
+                    </a>
                     <a href="#/search/pelicula" class="button_lvV6qZu">
                       ${useApp.icon.get("fi fi-rr-search")}
                     </a>
@@ -2867,18 +3171,6 @@ var inicio = () => {
                     <a href="#/youtube" class="a_lW7dgpk" style="display:none;">
                         <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" x="0px" y="0px" viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve" data-svg-name="fi fi-brands-youtube"><g><path d="M23.498,6.186c-0.276-1.039-1.089-1.858-2.122-2.136C19.505,3.546,12,3.546,12,3.546s-7.505,0-9.377,0.504   C1.591,4.328,0.778,5.146,0.502,6.186C0,8.07,0,12,0,12s0,3.93,0.502,5.814c0.276,1.039,1.089,1.858,2.122,2.136   C4.495,20.454,12,20.454,12,20.454s7.505,0,9.377-0.504c1.032-0.278,1.845-1.096,2.122-2.136C24,15.93,24,12,24,12   S24,8.07,23.498,6.186z M9.546,15.569V8.431L15.818,12L9.546,15.569z"></path></g></svg>
                         <span>Youtube</span>
-                        ${useApp.icon.get("fi fi-rr-angle-small-right")}
-                    </a>
-
-                    <a href="#/favoritos" class="a_lW7dgpk">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-heart"><path d="M17.5,1.917a6.4,6.4,0,0,0-5.5,3.3,6.4,6.4,0,0,0-5.5-3.3A6.8,6.8,0,0,0,0,8.967c0,4.547,4.786,9.513,8.8,12.88a4.974,4.974,0,0,0,6.4,0C19.214,18.48,24,13.514,24,8.967A6.8,6.8,0,0,0,17.5,1.917Zm-3.585,18.4a2.973,2.973,0,0,1-3.83,0C4.947,16.006,2,11.87,2,8.967a4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,11,8.967a1,1,0,0,0,2,0,4.8,4.8,0,0,1,4.5-5.05A4.8,4.8,0,0,1,22,8.967C22,11.87,19.053,16.006,13.915,20.313Z"></path></svg>
-                        <span>Favorito</span>
-                        ${useApp.icon.get("fi fi-rr-angle-small-right")}
-                    </a>
-                    
-                    <a href="#/coleccion" class="a_lW7dgpk" style="display:none">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-album-collection"><path d="M19,24H5c-2.76,0-5-2.24-5-5v-6c0-2.76,2.24-5,5-5h14c2.76,0,5,2.24,5,5v6c0,2.76-2.24,5-5,5ZM5,10c-1.65,0-3,1.35-3,3v6c0,1.65,1.35,3,3,3h14c1.65,0,3-1.35,3-3v-6c0-1.65-1.35-3-3-3H5Zm18.66-2.9c.41-.37,.45-1,.09-1.41-.95-1.08-2.32-1.69-3.75-1.69H4c-1.43,0-2.8,.62-3.75,1.69-.37,.41-.33,1.05,.09,1.41,.41,.36,1.05,.33,1.41-.09,.57-.65,1.39-1.02,2.25-1.02H20c.86,0,1.68,.37,2.25,1.02,.2,.22,.47,.34,.75,.34,.23,0,.47-.08,.66-.25Zm0-4c.41-.37,.45-1,.09-1.41-.95-1.08-2.32-1.69-3.75-1.69H4C2.57,0,1.2,.62,.25,1.69c-.37,.41-.33,1.05,.09,1.41,.41,.36,1.05,.33,1.41-.09,.57-.65,1.39-1.02,2.25-1.02H20c.86,0,1.68,.37,2.25,1.02,.2,.22,.47,.34,.75,.34,.23,0,.47-.08,.66-.25ZM12,20c-3.98,0-8-1.37-8-4s4.02-4,8-4,8,1.37,8,4-4.02,4-8,4Zm0-6c-3.72,0-6,1.29-6,2s2.28,2,6,2,6-1.29,6-2-2.28-2-6-2Zm0,3c.83,0,1.5-.45,1.5-1s-.67-1-1.5-1-1.5,.45-1.5,1,.67,1,1.5,1Z"></path></svg>
-                        <span>Coleccion</span>
                         ${useApp.icon.get("fi fi-rr-angle-small-right")}
                     </a>
                 </div> 
@@ -2966,7 +3258,7 @@ var searchType = () => {
                 </form>
 
             </header>
-        
+            <a href="#/historial" style="text-align:center; color: inherit; padding: 10px">Videos vistos</a>         
             <div class="div_IsTCHpN" style="padding:10px">
                 <div id="itemNull" class="loader-i" style="--color:var(--color-letter)"></div>
                 <div id="itemFalse" class="div_b14S3dH">
@@ -3656,12 +3948,12 @@ var favoritos = () => {
       end: 25,
     });
 
-    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
-      method: "GET",
-      headers: {
-        "Token-Auth": Cookie.get(useApp.auth),
-      },
-    })
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
       .then((res) => res.json())
       .then((data) => {
         useThis.reactivity.load.value = true;
@@ -3683,12 +3975,12 @@ var favoritos = () => {
       end: 25,
     });
 
-    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
-      method: "GET",
-      headers: {
-        "Token-Auth": Cookie.get(useApp.auth),
-      },
-    })
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
       .then((res) => res.json())
       .then((data) => {
         useThis.reactivity.load.value = true;
@@ -3808,6 +4100,466 @@ var favoritos = () => {
 
       if (["pelicula", "serie"].includes(type)) {
         return useThis.function.dataRenderPeliculaSerie(Data);
+      }
+
+      if (type == "anime") {
+        return useThis.function.dataRenderAnime(Data);
+      }
+
+      if (type == "youtube") {
+        return useThis.function.dataRenderYoutube(Data);
+      }
+    }
+  });
+
+  useThis.function.dataLoad();
+
+  return $element;
+};
+
+var historial = () => {
+  const useApp = window.dataApp;
+  const useThis = {
+    params: useApp.routes.params(),
+    reactivity: {
+      load: defineVal(true),
+      Data: defineVal([]),
+    },
+    values: {
+      observes: [],
+      dates: {},
+    },
+    function: {
+      dataLoad: () => {},
+    },
+    functions: {},
+  };
+
+  const $element = createNodeElement(`
+
+        <div class="div_Xu02Xjh">
+
+            <header class="header_K0hs3I0">
+ 
+                <div class="div_uNg74XS div_McPrYGP">
+                    <a href="#/search/pelicula" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
+                    <div class="div_sZZicpN">  
+                        <h3>Historial</h3>
+                        <span style="display:none">${useThis.params.type}</span>
+                    </div>
+                </div>
+
+            </header>
+
+            <div class="div_BIchAsC">
+                <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
+
+                    ${Object.entries({
+                      anime: "Animes",
+                      pelicula: "peliculas",
+                      serie: "series",
+                      // youtube: "YT Videos",
+                    })
+                      .map((entries, index) => {
+                        return `
+                        <button 
+                          data-gender="${entries[0]}" 
+                          class="${index == 0 ? "focus" : ""}">
+                        ${entries[1]}
+                        </button>`;
+                      })
+                      .join("")}
+                </div>
+            </div>
+        
+            <div class="div_IsTCHpN">
+                <div id="itemNull" class="loader-i" style="--color:var(--color-letter)"></div>
+                <div id="itemFalse" class="div_b14S3dH">
+                  ${useApp.icon.get("fi fi-rr-search-alt")}
+                  <h3>sin resultados</h3>
+                </div>
+
+                <div id="itemTrue" class="">
+                    <div id="itemTrueLoad" class="div_Qm4cPUn">
+                        <div class="loader-i" style="--color:var(--color-letter)"></div>
+                    </div>
+                </div>
+                
+            </div>
+
+        </div>
+
+  `);
+
+  const $elements = createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+
+  useThis.function.dataRenderAnime = (Data) => {
+    const template = document.createElement("div");
+    template.innerHTML = Data.map((data) => {
+      const date = new Date(data.other.datetime);
+      let fechaFormateada = "";
+      if (!useThis.values.dates[date.toLocaleDateString()]) {
+        useThis.values.dates[date.toLocaleDateString()] = true;
+        fechaFormateada = date.toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      }
+
+      const url = useApp.url.img(data.poster);
+      const episode = data.other.episode.padStart(2, "0");
+
+      return `
+          ${
+            fechaFormateada
+              ? `
+                <h3 style="grid-column: 1 / -1; padding: 10px">
+                  ${fechaFormateada}
+                </h3>
+              `
+              : ""
+          }
+          
+          <a 
+            href="#/anime/${data?.identifier}" 
+            class="div_SQpqup7" 
+            data-item>
+
+              <div class="div_fMC1uk6">
+                  <img src="" alt="" data-src="${url}" style="display:none">
+                  <span>${data.type ?? ""} | E${episode}</span>
+              </div>
+              <div class="div_9nWIRZE">
+                  <p>${data.title}</p>
+              </div>
+
+          </a>
+      `;
+    }).join("");
+
+    for (const child of template.children) {
+      if (child.tagName == "A") {
+        child.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+            const img = child.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+        useApp.instances.IntersectionObserver.observe(child);
+        useThis.values.observes.push(child);
+      }
+    }
+
+    $elements.itemTrue.append(...template.children);
+    $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
+  };
+
+  useThis.function.dataRenderPeliculaSerie = (Data, type) => {
+    const template = document.createElement("div");
+    template.innerHTML = Data.map((data) => {
+      let seasonAndEpisode = type;
+
+      const date = new Date(data.other.datetime);
+      let fechaFormateada = "";
+      if (!useThis.values.dates[date.toLocaleDateString()]) {
+        useThis.values.dates[date.toLocaleDateString()] = true;
+        fechaFormateada = date.toLocaleDateString("es-ES", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        });
+      }
+
+      if (type == "serie") {
+        const [season, episode] = data.other.episode.split("-");
+
+        seasonAndEpisode = `S${season.padStart(2, "0")}E${episode.padStart(
+          2,
+          "0"
+        )}`;
+      }
+
+      if (data.images.poster == null) return "";
+
+      const url = useApp.url.img(
+        `https://cuevana.biz/_next/image?url=${data.images.poster}&w=256&q=50`
+      );
+
+      return `
+
+        ${
+          fechaFormateada
+            ? `
+              <h3 style="grid-column: 1 / -1; padding: 10px">
+                ${fechaFormateada}
+              </h3>
+            `
+            : ""
+        }
+        <a 
+          href="#/${type}/${data.TMDbId}" 
+          class="div_SQpqup7" data-item>
+
+            <div class="div_fMC1uk6">
+                <img src="" alt="" data-src="${url}" style="display:none">
+                <span>${seasonAndEpisode}</span>
+            </div>
+            <div class="div_9nWIRZE">
+                <p>${data.titles.name}</p>
+            </div>
+        </a>    
+      `;
+    }).join("");
+
+    Array.from(template.children).forEach((child) => {
+      if (child.tagName == "A") {
+        child.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+            const img = child.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+        useApp.instances.IntersectionObserver.observe(child);
+        useThis.values.observes.push(child);
+      }
+    });
+
+    $elements.itemTrue.append(...template.children);
+    $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
+  };
+
+  useThis.function.dataRenderYoutube = (Data) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(
+      ...Data.map((data) => {
+        return createNodeElement(`
+                <a 
+                  href="#/youtube/${data.videoId}" 
+                  class="div_EJlRW2l" data-item>
+
+                    <div class="div_zcWgA0o">
+                        <img 
+                          src="${data.thumbnail.thumbnails[0].url}" 
+                          alt="">
+                        <span>
+                          ${data.author || data.ownerText.runs[0].text}
+                        </span>
+                    </div>
+                    <div class="div_9nWIRZE">
+                      <p>
+                        ${
+                          data.title.runs ? data.title.runs[0].text : data.title
+                        }
+                      </p>
+                    </div>
+    
+                </a>
+            `);
+      })
+    );
+
+    $elements.itemTrue.append(fragment);
+    $elements.itemTrueLoad.remove();
+  };
+
+  useThis.function.dataLoadAnime = () => {
+    const encodeQueryString = encodeQueryObject({
+      route: "history",
+      type: 1,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+      method: "GET",
+      headers: {
+        "Token-Auth": Cookie.get(useApp.auth),
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => {
+              return {
+                ...JSON.parse(data.data_json),
+                other: {
+                  episode: data.episode,
+                  datetime: data.datetime,
+                },
+              };
+            })
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
+  };
+
+  useThis.function.dataLoadPeliculaSerie = (type) => {
+    const encodeQueryString = encodeQueryObject({
+      route: "history",
+      type: type == "pelicula" ? 2 : 3,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
+      method: "GET",
+      headers: {
+        "Token-Auth": Cookie.get(useApp.auth),
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => {
+              return {
+                ...JSON.parse(data.data_json),
+                other: {
+                  episode: data.episode,
+                  datetime: data.datetime,
+                },
+              };
+            })
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
+
+    // useThis.reactivity.load.value = true;
+    // useThis.reactivity.Data.value = JSON.parse(
+    //   localStorage.getItem(
+    //     type == "pelicula" ? "favorite_pelicula" : "favorite_serie"
+    //   )
+    // );
+    // useThis.reactivity.load.value = false;
+  };
+
+  useThis.function.dataLoadYoutube = () => {
+    useThis.reactivity.load.value = true;
+    useThis.reactivity.Data.value = JSON.parse(
+      localStorage.getItem("favorite_yt_video")
+    );
+    useThis.reactivity.load.value = false;
+  };
+
+  useThis.function.dataLoad = () => {
+    const type = $elements.buttonsFocus
+      .querySelector("button.focus")
+      .getAttribute("data-gender");
+    $elements.itemTrue.setAttribute(
+      "class",
+      ["anime", "pelicula", "serie"].includes(type)
+        ? "div_qsNmfP3"
+        : "div_FtxwFbU"
+    );
+
+    if (["pelicula", "serie"].includes(type)) {
+      return useThis.function.dataLoadPeliculaSerie(type);
+    }
+
+    if (type == "anime") {
+      return useThis.function.dataLoadAnime();
+    }
+
+    if (type == "youtube") {
+      return useThis.function.dataLoadYoutube();
+    }
+  };
+
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
+
+  $elements.buttonsFocus.addEventListener("click", (e) => {
+    const button = e.target.closest("button");
+    if (button) {
+      Array.from(
+        $elements.buttonsFocus.querySelectorAll("button.focus")
+      ).forEach((button) => button.classList.remove("focus"));
+      button.classList.add("focus");
+
+      useThis.reactivity.load.value = true;
+      $elements.itemTrue.innerHTML = "";
+      useThis.values.dates = {};
+
+      useThis.functions.unobserve();
+      useThis.function.dataLoad();
+    }
+  });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.function.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
+  useThis.reactivity.load.observe((load) => {
+    const dataItem = $elements.itemTrue.querySelector("[data-item]");
+
+    const render = {
+      itemNull: load,
+      itemFalse: !load && !dataItem,
+      itemTrue: !load && !!dataItem,
+    };
+
+    Object.entries(render).forEach((entries) => {
+      $elements[entries[0]].style.display = entries[1] ? "" : "none";
+    });
+  });
+
+  useThis.reactivity.Data.observe((Data) => {
+    {
+      const type = $elements.buttonsFocus
+        .querySelector("button.focus")
+        .getAttribute("data-gender");
+
+      Data = Data.filter((data) => Object.keys(data).length);
+
+      if (["pelicula", "serie"].includes(type)) {
+        return useThis.function.dataRenderPeliculaSerie(Data, type);
       }
 
       if (type == "anime") {
@@ -4190,12 +4942,12 @@ var profile = () => {
       });
   });
 
-  fetch(useApp.url.server(`/api.php?route=user`), {
-    method: "GET",
-    headers: {
-      "Token-Auth": Cookie.get(useApp.auth),
-    },
-  })
+  fetch(
+    useApp.url.server(`/api.php?route=user`),
+    useApp.fetchOptions({
+      method: "GET",
+    })
+  )
     .then((res) => res.json())
     .then((data) => {
       $elements.form.fullname.value = data?.fullname || "";
@@ -4211,12 +4963,12 @@ var profile = () => {
         id: "one",
       });
 
-      fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
-        method: "POST",
-        headers: {
-          "Token-Auth": Cookie.get(useApp.auth),
-        },
-      })
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "POST",
+        })
+      )
         .then((res) => res.json())
         .then((res) => {
           if (res?.status) {
@@ -4253,6 +5005,7 @@ var routes = () => {
     { hash: "/search/:type/:result/result", callback: searchTypeResult },
 
     { hash: "/favoritos", callback: () => routesPrivate(favoritos) },
+    { hash: "/historial", callback: () => routesPrivate(historial) },
   ]);
 
   addEventListener("hashchange", () => {

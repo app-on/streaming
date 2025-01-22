@@ -40,6 +40,13 @@ input {
   flex-direction: column;
 }
 
+.container {
+  background: green;
+  flex: 1;
+
+  display: flex;
+}
+
 .routes {
   flex: 1;
 
