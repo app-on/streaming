@@ -19,7 +19,7 @@ var dataAppUrl = () => {
 var dataApp = () => {
   const config = {
     routes: new RouteHashCallback(),
-    auth: "auth_Mj8Q5q3_debug",
+    auth: "auth_Mj8Q5q3",
     user: null,
     icon: new IconSVG(),
     mediaPlayer: new MediaPlayer(
@@ -104,7 +104,7 @@ var dataApp = () => {
       return {
         ...options,
         headers: {
-          "Token-Auth": Cookie.get("auth_Mj8Q5q3_debug"),
+          "Token-Auth": Cookie.get("auth_Mj8Q5q3"),
           ...(options?.headers ?? {}),
         },
         method: options?.method ?? "GET",
