@@ -409,9 +409,9 @@ var peliculaId = () => {
         .then((data) => {
           useThis.values.streaming = data;
           $elements.favorite.style.visibility = "";
+          useThis.values.isConnected = Boolean(data);
 
-          if (data != null) {
-            useThis.values.isConnected = true;
+          if (useThis.values.isConnected) {
             useThis.reactivity.isFavorite.value = data?.favorite;
           }
         });
@@ -498,28 +498,30 @@ var peliculaId = () => {
   };
 
   useThis.functions.updateHistory = (currentTime) => {
-    const encodeQueryString = encodeQueryObject({
-      route: "update-history-view",
-      episode: useThis.values.episode,
-      time_view: currentTime,
-      datetime: Date.now(),
-      data_id: useThis.values.data_id,
-      type: 2,
-    });
-
-    fetch(
-      useApp.url.server(`/api.php?${encodeQueryString}`),
-      useApp.fetchOptions({
-        method: "GET",
-      })
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data);
-        // if (data?.status) {
-        //   useThis.reactivity.isFavorite.value = data.type == 1;
-        // }
+    if (useThis.values.isConnected) {
+      const encodeQueryString = encodeQueryObject({
+        route: "update-history-view",
+        episode: useThis.values.episode,
+        time_view: currentTime,
+        datetime: Date.now(),
+        data_id: useThis.values.data_id,
+        type: 2,
       });
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "GET",
+        })
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data);
+          // if (data?.status) {
+          //   useThis.reactivity.isFavorite.value = data.type == 1;
+          // }
+        });
+    }
   };
 
   useThis.functions.updateHistoryVideo = () => {
@@ -652,6 +654,11 @@ var peliculaId = () => {
     )
       .then((res) => res.text())
       .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
         if (data?.status) {
           useThis.reactivity.isFavorite.value = data.type == 1;
         }
@@ -669,6 +676,21 @@ var peliculaId = () => {
 
       useApp.mediaPlayer.element().requestFullscreen();
       useThis.functions.updateHistoryVideo();
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: $elements.title.textContent,
+          artist: $elements.genres.textContent,
+          album: "Pelicula",
+          artwork: [
+            {
+              src: $elements.poster.src,
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
+        });
+      }
     }
   });
 
@@ -904,9 +926,9 @@ var serieId = () => {
         .then((data) => {
           useThis.values.streaming = data;
           $elements.favorite.style.visibility = "";
+          useThis.values.isConnected = Boolean(data);
 
-          if (data != null) {
-            useThis.values.isConnected = true;
+          if (useThis.values.isConnected) {
             useThis.reactivity.isFavorite.value = data?.favorite;
           }
         });
@@ -1078,28 +1100,30 @@ var serieId = () => {
   };
 
   useThis.functions.updateHistory = (currentTime) => {
-    const encodeQueryString = encodeQueryObject({
-      route: "update-history-view",
-      episode: useThis.values.episode,
-      time_view: currentTime,
-      datetime: Date.now(),
-      data_id: useThis.values.data_id,
-      type: 3,
-    });
-
-    fetch(
-      useApp.url.server(`/api.php?${encodeQueryString}`),
-      useApp.fetchOptions({
-        method: "GET",
-      })
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        console.log(data);
-        // if (data?.status) {
-        //   useThis.reactivity.isFavorite.value = data.type == 1;
-        // }
+    if (useThis.values.isConnected) {
+      const encodeQueryString = encodeQueryObject({
+        route: "update-history-view",
+        episode: useThis.values.episode,
+        time_view: currentTime,
+        datetime: Date.now(),
+        data_id: useThis.values.data_id,
+        type: 3,
       });
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "GET",
+        })
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          console.log(data);
+          // if (data?.status) {
+          //   useThis.reactivity.isFavorite.value = data.type == 1;
+          // }
+        });
+    }
   };
 
   useThis.functions.updateHistoryVideo = () => {
@@ -1245,19 +1269,6 @@ var serieId = () => {
         type: 3,
       });
 
-      // const body = {
-      //   data_id: useThis.reactivity.data.value.TMDbId,
-      //   data_json: JSON.stringify(
-      //     Object.entries(useThis.reactivity.data.value).reduce((prev, curr) => {
-      //       if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
-      //         prev[curr[0]] = curr[1];
-      //       }
-      //       return prev;
-      //     }, {})
-      //   ),
-      //   type: 3,
-      // };
-
       fetch(
         useApp.url.server(`/api.php?${encodeQueryString}`),
         useApp.fetchOptions({
@@ -1266,6 +1277,11 @@ var serieId = () => {
       )
         .then((res) => res.json())
         .then((data) => {
+          if (data == null) {
+            location.hash = "#/login";
+            return;
+          }
+
           if (data?.status) {
             useThis.reactivity.isFavorite.value = data.type == 1;
           }
@@ -1279,6 +1295,7 @@ var serieId = () => {
     const button = e.target.closest("button");
     if (button) {
       useThis.values.episode = $elements.itemTrueOptionVideos.dataset.episode;
+      const [season, episode] = useThis.values.episode.split("-");
 
       $elements.itemTrueOption.hidePopover();
       useApp.mediaPlayer.element().requestFullscreen();
@@ -1300,6 +1317,21 @@ var serieId = () => {
       ApiWebCuevana.serverUrl(button.getAttribute("data-url")).then((url) => {
         useThis.functions.setLinkServer(url);
       });
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: $elements.title.textContent,
+          artist: `T${season.padStart(2, "0")}C${episode.padStart(2, "0")}`,
+          album: "Serie",
+          artwork: [
+            {
+              src: $elements.poster.src,
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
+        });
+      }
     }
   });
 
@@ -2347,6 +2379,8 @@ var anime = () => {
             <div class="div_BIchAsC" style="scrollbar-width: none">
                 <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
                     <button data-gender="Todos" class="focus">Todos</button>
+                    <button data-gender="-1">Ultimos episodios</button>
+                    <button data-gender="-2">Ultimos animes</button>
                     <button data-gender="Favoritos" style="display:none;">Favoritos</button>
                     ${genders
                       .map((gender) => {
@@ -2400,6 +2434,8 @@ var anime = () => {
     fragment.append(
       ...Data.map((content) => {
         const url = useApp.url.img(content.poster);
+        const episode = `episodio ${content.episode}`;
+        const aspectRatio = content.episode ? "aspect-ratio:3/2" : "";
 
         const element = createNodeElement(`
                 <a 
@@ -2407,9 +2443,9 @@ var anime = () => {
                   class="div_SQpqup7" 
                   data-item>
 
-                    <div class="div_fMC1uk6">
-                        <img src="" alt="" data-src="${url}" style="display:none">
-                        <span>${content.type ?? ""}</span>
+                    <div class="div_fMC1uk6" style="${aspectRatio}">
+                        <img src="" alt="" data-src="${url}" style="display:none;">
+                        <span>${content.type ?? episode}</span>
                     </div>
                     <div class="div_9nWIRZE">
                         <p>${content.title}</p>
@@ -2437,7 +2473,10 @@ var anime = () => {
     $elements.itemTrue.append(fragment);
     $elements.itemTrueLoad.remove();
 
-    if (Data.length > 23) {
+    if (
+      Data.length > 23 &&
+      !["-1", "-2"].includes($elements.buttonsFocus.getAttribute("data-gender"))
+    ) {
       $elements.itemTrue.append($elements.itemTrueLoad);
       useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
     }
@@ -2456,6 +2495,15 @@ var anime = () => {
 
         if (genreString != "Todos") {
           genreArray.push(genreString);
+        }
+
+        if (["-1", "-2"].includes(genreString)) {
+          return ApiWebAnimeflv.home().then((object) => {
+            useThis.reactivity.load.value = true;
+            useThis.reactivity.Data.value =
+              genreString == "-1" ? object.episodes : object.animes;
+            useThis.reactivity.load.value = false;
+          });
         }
 
         ApiWebAnimeflv.search({ page, genre: genreArray }).then((array) => {
@@ -2756,18 +2804,20 @@ var animeId = () => {
         .then((data) => {
           useThis.value.streaming = data;
           $elements.favorite.style.visibility = "";
+          useThis.value.isConnected = Boolean(data);
 
-          if (data != null) {
-            useThis.value.isConnected = true;
+          if (useThis.value.isConnected) {
             useThis.reactivity.isFavorite.value = data?.favorite;
-          }
 
-          Array.from($elements.episodes.children).forEach((child) => {
-            const episode = child.dataset.episode;
-            if (data.episodes[episode] != undefined) {
-              child.querySelector("input").checked = true;
-            }
-          });
+            Array.from($elements.episodes.querySelectorAll("input")).forEach(
+              (input) => {
+                const episode = input.dataset.episode;
+
+                input.checked = data.episodes[episode] != undefined;
+                input.parentElement.style.display = "flex";
+              }
+            );
+          }
         });
     }
   });
@@ -2785,10 +2835,14 @@ var animeId = () => {
             ? "checked"
             : "";
 
+        const displayInput = useThis.value.isConnected ? "" : "display:none";
+
         return `
           <div data-episode="${episode}" style="display:flex; background: rgb(255 255 255 / 0.1); border-radius:5px">
             <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode}" data-title="${useThis.params.id}" data-description="episodio ${episode}" data-episode="${episode}" style="flex:1; background: none;">${episode}</button>
-            <label style="width:40px; height:40px; display:flex"><input type="checkbox" data-episode="${episode}" style="margin:auto" ${checked}></label> 
+            <label style="width:40px; height:40px; display:flex; ${displayInput}">
+              <input type="checkbox" data-episode="${episode}" style="margin:auto;" ${checked}>
+            </label> 
           </div>
         `;
       })
@@ -2867,27 +2921,29 @@ var animeId = () => {
   };
 
   useThis.functions.updateHistory = (currentTime) => {
-    const encodeQueryString = encodeQueryObject({
-      route: "update-history-view",
-      episode: useThis.value.episode,
-      time_view: currentTime,
-      datetime: Date.now(),
-      data_id: useThis.value.data_id,
-      type: 1,
-    });
-
-    fetch(
-      useApp.url.server(`/api.php?${encodeQueryString}`),
-      useApp.fetchOptions({
-        method: "GET",
-      })
-    )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.status) {
-          useThis.reactivity.isFavorite.value = data.type == 1;
-        }
+    if (useThis.value.isConnected) {
+      const encodeQueryString = encodeQueryObject({
+        route: "update-history-view",
+        episode: useThis.value.episode,
+        time_view: currentTime,
+        datetime: Date.now(),
+        data_id: useThis.value.data_id,
+        type: 1,
       });
+
+      fetch(
+        useApp.url.server(`/api.php?${encodeQueryString}`),
+        useApp.fetchOptions({
+          method: "GET",
+        })
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status) {
+            useThis.reactivity.isFavorite.value = data.type == 1;
+          }
+        });
+    }
   };
 
   useThis.functions.updateHistoryVideo = () => {
@@ -3081,6 +3137,11 @@ var animeId = () => {
     )
       .then((res) => res.json())
       .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
         if (data?.status) {
           useThis.reactivity.isFavorite.value = data.type == 1;
         }
@@ -3097,6 +3158,21 @@ var animeId = () => {
       useApp.mediaPlayer.element().requestFullscreen();
 
       useThis.functions.updateHistoryVideo();
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: $elements.title.textContent,
+          artist: `Episodio ${useThis.value.episode}`,
+          album: "Anime",
+          artwork: [
+            {
+              src: $elements.poster.src,
+              sizes: "512x512",
+              type: "image/png",
+            },
+          ],
+        });
+      }
     }
   });
 
