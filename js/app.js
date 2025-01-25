@@ -82,6 +82,40 @@ var dataApp = () => {
           parameters?.events?.move?.(e);
         });
       },
+      historyBack: ($element) => {
+        $element?.addEventListener("click", (e) => {
+          const start = Boolean(history.state?.start);
+          if (start) {
+            return;
+          }
+
+          e.preventDefault();
+          history.back();
+        });
+      },
+      generateUUID: () => {
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          (char) => {
+            const random = (Math.random() * 16) | 0; // Genera un número aleatorio entre 0 y 15
+            const value = char === "x" ? random : (random & 0x3) | 0x8; // Usa 0x3 y 0x8 para asegurar la versión 4
+            return value.toString(16); // Convierte a hexadecimal
+          }
+        );
+      },
+      formatTime: (seconds) => {
+        seconds = parseInt(seconds) || 0;
+        const h = Math.floor(seconds / 3600); // Calcular horas
+        const m = Math.floor((seconds % 3600) / 60); // Calcular minutos
+        const s = seconds % 60; // Calcular segundos restantes
+
+        const parts = [];
+        if (h > 0) parts.push(`${h}h`);
+        if (m > 0 || h > 0) parts.push(`${m}m`); // Mostrar minutos si hay horas
+        if (s > 0) parts.push(`${s}s`); // Mostrar minutos si hay horas
+
+        return parts.join(" ");
+      },
     },
     instances: {
       IntersectionObserver: new IntersectionObserver(
@@ -183,6 +217,7 @@ var peliculaId = () => {
     params: useApp.routes.params(),
     reactivity: {
       isFavorite: defineVal(false),
+      isView: defineVal(false),
       load: defineVal(true),
       data: defineVal({}),
       episodes: defineVal([]),
@@ -203,14 +238,13 @@ var peliculaId = () => {
             <header class="header_K0hs3I0 header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/pelicula" class="button_lvV6qZu">
+                    <a href="#/pelicula" class="button_lvV6qZu" data-history-back>
                       ${useApp.icon.get("fi fi-rr-angle-small-left")}
-                    </a>
-                    
+                    </a>  
                 </div>
                 <h2 id="textTitle" style="flex: 1; text-align:center; font-size: clamp(1rem, 2vw, 2rem);"></h2>
                 <div id="divButton" class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu" style="visibility:hidden">
+                    <button id="favorite" class="button_lvV6qZu" data-action="0" style="visibility:hidden">
                       ${useApp.icon.get("fi fi-rr-heart")}
                     </button>
                 </div>
@@ -248,12 +282,18 @@ var peliculaId = () => {
                       <div class="div_0JOSFlg">
                         <img id="poster" src="">
                       </div>
-                      <button id="play" class="button_bDfhQ4b">
-                        <small>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
-                        </small>
-                        <span>Reproducir</span>
-                      </button>
+                      <div class="div_cxFXOaL">
+                        <label class="label_zjZIMnZ">
+                          <input type="checkbox" id="inputView">
+                          <span style="display:flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check"><path d="M22.319,4.431,8.5,18.249a1,1,0,0,1-1.417,0L1.739,12.9a1,1,0,0,0-1.417,0h0a1,1,0,0,0,0,1.417l5.346,5.345a3.008,3.008,0,0,0,4.25,0L23.736,5.847a1,1,0,0,0,0-1.416h0A1,1,0,0,0,22.319,4.431Z"></path></svg></span>
+                        </label>
+                        <button id="play" class="button_bDfhQ4b">
+                          <small>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                          </small>
+                          <span>Reproducir</span>
+                        </button>
+                      </div>
                       <hr class="hr_nTfcjTI">
                       <div class="div_aSwP0zW" style="text-align:center">
                           <span id="genres"></span>
@@ -303,6 +343,12 @@ var peliculaId = () => {
     $elements.favorite.innerHTML = useApp.icon.get(
       isFavorite ? "fi fi-sr-heart" : "fi fi-rr-heart"
     );
+
+    $elements.favorite.setAttribute("data-action", isFavorite ? 1 : 0);
+  });
+
+  useThis.reactivity.isView.observe((isView) => {
+    $elements.inputView.checked = isView;
   });
 
   useThis.reactivity.load.observe((load) => {
@@ -377,46 +423,51 @@ var peliculaId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      useThis.values.data_id = data.TMDbId;
-
-      const encodeQueryString = encodeQueryObject({
-        route: "favorites-one",
-        data_id: data.TMDbId,
-        type: 2,
-      });
-
-      const body = {
-        data_id: data.TMDbId,
-        data_json: JSON.stringify(
-          Object.entries(data).reduce((prev, curr) => {
-            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
-              prev[curr[0]] = curr[1];
-            }
-            return prev;
-          }, {})
-        ),
-        type: 2,
-      };
-
-      fetch(
-        useApp.url.server(`/api.php?${encodeQueryString}`),
-        useApp.fetchOptions({
-          method: "POST",
-          body: JSON.stringify(body),
-        })
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          useThis.values.streaming = data;
-          $elements.favorite.style.visibility = "";
-          useThis.values.isConnected = Boolean(data);
-
-          if (useThis.values.isConnected) {
-            useThis.reactivity.isFavorite.value = data?.favorite;
-          }
-        });
+      useThis.functions.dataTrueInfo(data);
     }
   });
+
+  useThis.functions.dataTrueInfo = (data) => {
+    useThis.values.data_id = data.TMDbId;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "favorites-one",
+      data_id: data.TMDbId,
+      type: 2,
+    });
+
+    const body = {
+      data_id: data.TMDbId,
+      data_json: JSON.stringify(
+        Object.entries(data).reduce((prev, curr) => {
+          if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+            prev[curr[0]] = curr[1];
+          }
+          return prev;
+        }, {})
+      ),
+      type: 2,
+    };
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.values.streaming = data;
+        $elements.favorite.style.visibility = "";
+        useThis.values.isConnected = Boolean(data);
+
+        if (useThis.values.isConnected) {
+          useThis.reactivity.isFavorite.value = Boolean(data?.favorite);
+          useThis.reactivity.isView.value = Boolean(data?.view);
+        }
+      });
+  };
 
   useThis.functions.getLinkServer = (url) => {
     const newURL = new URL(url);
@@ -464,7 +515,6 @@ var peliculaId = () => {
       });
     } else if (["doodstream"].includes(host)) {
       MediaWebUrl.doodstream({ url: url }).then((res) => {
-        console.log(res);
         if (res.status) {
           mediaPlayer.video((video) => {
             video.src = res.url;
@@ -497,12 +547,13 @@ var peliculaId = () => {
     });
   };
 
-  useThis.functions.updateHistory = (currentTime) => {
+  useThis.functions.updateHistory = (currentTime, duration = 0) => {
     if (useThis.values.isConnected) {
       const encodeQueryString = encodeQueryObject({
         route: "update-history-view",
         episode: useThis.values.episode,
         time_view: currentTime,
+        time_duration: duration,
         datetime: Date.now(),
         data_id: useThis.values.data_id,
         type: 2,
@@ -513,14 +564,7 @@ var peliculaId = () => {
         useApp.fetchOptions({
           method: "GET",
         })
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          console.log(data);
-          // if (data?.status) {
-          //   useThis.reactivity.isFavorite.value = data.type == 1;
-          // }
-        });
+      );
     }
   };
 
@@ -538,6 +582,7 @@ var peliculaId = () => {
         const currentTime =
           parseInt(
             useThis.values.streaming?.episodes?.[useThis.values.episode]
+              ?.time_view
           ) || 0;
 
         video.currentTime = currentTime;
@@ -549,14 +594,20 @@ var peliculaId = () => {
 
           if (num > 0 && num % 15 == 0 && !times[num]) {
             times[num] = true;
-            useThis.functions.updateHistory(num);
+            useThis.functions.updateHistory(
+              num,
+              Math.ceil(video.duration) || 0
+            );
           }
         }
       };
 
       video.onseeked = () => {
         const currentTime = Math.floor(video.currentTime);
-        useThis.functions.updateHistory(currentTime);
+        useThis.functions.updateHistory(
+          currentTime,
+          Math.ceil(video.duration) || 0
+        );
 
         times = {};
         times[currentTime] = true;
@@ -637,13 +688,13 @@ var peliculaId = () => {
     // if (!useThis.values.isConnected) {
     //   return (location.hash = "#/login");
     // }
-
     useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
 
     const encodeQueryString = encodeQueryObject({
       route: "toggle-favorites",
       data_id: useThis.reactivity.data.value.TMDbId,
       type: 2,
+      action: $elements.favorite.dataset.action,
     });
 
     fetch(
@@ -652,7 +703,7 @@ var peliculaId = () => {
         method: "GET",
       })
     )
-      .then((res) => res.text())
+      .then((res) => res.json())
       .then((data) => {
         if (data == null) {
           location.hash = "#/login";
@@ -661,6 +712,39 @@ var peliculaId = () => {
 
         if (data?.status) {
           useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
+  });
+
+  $elements.inputView.addEventListener("change", () => {
+    // if (!useThis.values.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
+
+    // useThis.reactivity.isView.value = !useThis.reactivity.isView.value;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-views",
+      data_id: useThis.reactivity.data.value.TMDbId,
+      type: 2,
+      action: $elements.inputView.checked ? 1 : 0,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
+        if (data?.status) {
+          $elements.inputView.checked = data.type == 1;
         }
       });
   });
@@ -703,6 +787,7 @@ var peliculaId = () => {
   useApp.elements.meta.color.setAttribute("content", "#000000");
   useThis.functions.dataLoad();
 
+  useApp.functions.historyBack($element.querySelector("[data-history-back]"));
   return $element;
 };
 
@@ -716,9 +801,11 @@ var serieId = () => {
     },
     reactivity: {
       isFavorite: defineVal(false),
+      isView: defineVal(false),
       load: defineVal(true),
       data: defineVal({}),
       episodes: defineVal([]),
+      dataTrueInfoRefresh: true,
     },
     values: {
       isConnected: false,
@@ -735,13 +822,13 @@ var serieId = () => {
             <header class="header_K0hs3I0 header_XpmKRuK header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/serie" class="button_lvV6qZu">
+                    <a href="#/serie" class="button_lvV6qZu" data-history-back>
                       ${useApp.icon.get("fi fi-rr-angle-small-left")}
                     </a>
                 </div>
                 <h2 id="title" style="flex: 1; text-align:center; font-size: clamp(1rem, 2vw, 2rem);"></h2>
                 <div class="div_x0cH0Hq">
-                    <button id="favorite" class="button_lvV6qZu" style="visibility:hidden">
+                    <button id="favorite" class="button_lvV6qZu" data-action="0" style="visibility:hidden">
                       ${useApp.icon.get("fi fi-rr-heart")}
                     </button>
                 </div>
@@ -778,12 +865,18 @@ var serieId = () => {
                       <div class="div_0JOSFlg">
                         <img id="poster" src="">
                       </div>
-                      <button id="play" class="button_bDfhQ4b" style="display:none">
-                        <small>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
-                        </small>
-                        <span>Reproducir</span>
-                      </button>
+                      <div class="div_cxFXOaL">
+                        <label class="label_zjZIMnZ">
+                          <input type="checkbox" id="inputView">
+                          <span style="display:flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check"><path d="M22.319,4.431,8.5,18.249a1,1,0,0,1-1.417,0L1.739,12.9a1,1,0,0,0-1.417,0h0a1,1,0,0,0,0,1.417l5.346,5.345a3.008,3.008,0,0,0,4.25,0L23.736,5.847a1,1,0,0,0,0-1.416h0A1,1,0,0,0,22.319,4.431Z"></path></svg></span>
+                        </label>
+                        <button id="play" class="button_bDfhQ4b" style="display:none">
+                          <small>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                          </small>
+                          <span>Reproducir</span>
+                        </button>
+                      </div>
                       <hr class="hr_nTfcjTI">
                       <div class="div_aSwP0zW" style="text-align:center">
                           <span id="genres"></span>
@@ -798,7 +891,7 @@ var serieId = () => {
                         <div class="div_WslendP" style="scrollbar-width:none;">
                             <div id="season" class="div_z0PiH0E" data-season="0" data-data="[]" ></div>
                         </div>
-                        <div id="episodes" class="div_2cD7Iqb"></div>
+                        <div id="episodes" class="div_bi3qmqX" data-class="div_2cD7Iqb"></div>
                     </div>
                     
                 </div>
@@ -836,6 +929,10 @@ var serieId = () => {
     );
   });
 
+  useThis.reactivity.isView.observe((isView) => {
+    $elements.inputView.checked = isView;
+  });
+
   useThis.reactivity.load.observe((load) => {
     const render = {
       itemNull: load,
@@ -849,7 +946,6 @@ var serieId = () => {
   });
 
   useThis.reactivity.data.observe((data) => {
-    console.log(data);
     if (Boolean(Object.keys(data).length)) {
       // $elements.backdrop.src  = useApp.url.img( `https://cuevana.biz/_next/image?url=${ data.images.backdrop }&w=828&q=75` )
       $elements.poster.src = useApp.url.img(
@@ -870,9 +966,13 @@ var serieId = () => {
       $elements.season.innerHTML = seasons
         .map((season, index) => {
           if (!season.episodes.length) return "";
-          return `<button data-season="${index}" class="${
-            index == 0 ? "focus" : ""
-          }"><span>temporada ${season.number}</span></button>`;
+          return `
+            <button 
+              data-season="${index}" 
+              class="${index == 0 ? "focus" : ""}">
+                <span>Temporada ${season.number}</span>
+            </button>
+          `;
         })
         .join("");
 
@@ -894,51 +994,59 @@ var serieId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      useThis.values.data_id = data.TMDbId;
-
-      const encodeQueryString = encodeQueryObject({
-        route: "favorites-one",
-        data_id: data.TMDbId,
-        type: 3,
-      });
-
-      const body = {
-        data_id: data.TMDbId,
-        data_json: JSON.stringify(
-          Object.entries(data).reduce((prev, curr) => {
-            if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
-              prev[curr[0]] = curr[1];
-            }
-            return prev;
-          }, {})
-        ),
-        type: 3,
-      };
-
-      fetch(
-        useApp.url.server(`/api.php?${encodeQueryString}`),
-        useApp.fetchOptions({
-          method: "POST",
-          body: JSON.stringify(body),
-        })
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          useThis.values.streaming = data;
-          $elements.favorite.style.visibility = "";
-          useThis.values.isConnected = Boolean(data);
-
-          if (useThis.values.isConnected) {
-            useThis.reactivity.isFavorite.value = data?.favorite;
-          }
-        });
+      useThis.functions.dataTrueInfo(data);
     }
   });
+
+  useThis.functions.dataTrueInfo = (data) => {
+    useThis.values.data_id = data.TMDbId;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "favorites-one",
+      data_id: data.TMDbId,
+      type: 3,
+    });
+
+    const body = {
+      data_id: data.TMDbId,
+      data_json: JSON.stringify(
+        Object.entries(data).reduce((prev, curr) => {
+          if (["TMDbId", "titles", "url", "images"].includes(curr[0])) {
+            prev[curr[0]] = curr[1];
+          }
+          return prev;
+        }, {})
+      ),
+      type: 3,
+    };
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.values.streaming = data;
+        $elements.favorite.style.visibility = "";
+        useThis.values.isConnected = Boolean(data);
+
+        if (useThis.values.isConnected) {
+          useThis.reactivity.isFavorite.value = Boolean(data?.favorite);
+          useThis.reactivity.isView.value = Boolean(data?.view);
+
+          useThis.functions.renderSeason();
+        }
+      });
+  };
 
   useThis.functions.renderSeason = () => {
     const index = parseInt($elements.season.getAttribute("data-season"));
     const seasons = JSON.parse($elements.season.getAttribute("data-data"));
     const episodes = seasons[index].episodes;
+    const season = seasons[index].number;
 
     const array =
       localStorage.getItem("episodes_direction") == 0
@@ -947,53 +1055,81 @@ var serieId = () => {
 
     $elements.episodes.innerHTML = array
       .map((episode) => {
-        const url = useApp.url.img(
+        useApp.url.img(
           `https://cuevana.biz/_next/image?url=${episode.image}&w=384&q=75`
         );
 
-        const dataData = EncodeTemplateString.toInput(JSON.stringify(episode));
+        const episodeInfo =
+          useThis.values.streaming?.episodes?.[`${season}-${episode.number}`];
 
+        const dataData = EncodeTemplateString.toInput(JSON.stringify(episode));
+        const checked = episodeInfo != undefined ? "checked" : "";
+
+        const displayInput = useThis.values.isConnected ? "" : "display:none";
         return `
-          <div 
-            class="div_LKjl9J4"  
-            data-data="${dataData}" 
-            data-season="${seasons[index].number}"
-            data-episode="${episode.number}"
-            data-item>
-              <div class="div_nmcQ0GU">
-                  <img src="" data-src="${url}" style="display:none">
-                  <span>${episode.title}</span>
-                  <button class="button_HMIA4Fe"></button>
-              </div>
-          </div> 
+          <div data-episode="${episode.number}" class="div_eGwK6I1">
+            <button 
+            class="button_fk0VHgU" 
+              data-data="${dataData}" 
+              data-season="${season}"
+              data-episode="${episode.number}"
+              data-item>
+                <span>
+                  T${season.toString().padStart(2, "0")} 
+                  E${episode.number.toString().padStart(2, "0")}
+                </span>
+                <small>
+                  ${
+                    parseInt(episodeInfo?.time_view)
+                      ? "visto ".concat(
+                          useApp.functions.formatTime(episodeInfo.time_view)
+                        )
+                      : ""
+                  }
+                  ${
+                    parseInt(episodeInfo?.time_duration)
+                      ? "de ".concat(
+                          useApp.functions.formatTime(episodeInfo.time_duration)
+                        )
+                      : ""
+                  }
+                </small>
+            </button>
+            <label class="label_zjZIMnZ" style="${displayInput}">
+              <input type="checkbox" 
+                data-season="${season}" 
+                data-episode="${episode.number}" ${checked}>
+              <span style="display:flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check"><path d="M22.319,4.431,8.5,18.249a1,1,0,0,1-1.417,0L1.739,12.9a1,1,0,0,0-1.417,0h0a1,1,0,0,0,0,1.417l5.346,5.345a3.008,3.008,0,0,0,4.25,0L23.736,5.847a1,1,0,0,0,0-1.416h0A1,1,0,0,0,22.319,4.431Z"></path></svg></span>
+            </label>
+          </div>
         `;
       })
       .join("");
 
-    Array.from($elements.episodes.children).forEach((child) => {
-      child.addEventListener("_IntersectionObserver", ({ detail }) => {
-        if (detail.entry.isIntersecting) {
-          detail.observer.unobserve(detail.entry.target);
+    // Array.from($elements.episodes.children).forEach((child) => {
+    //   child.addEventListener("_IntersectionObserver", ({ detail }) => {
+    //     if (detail.entry.isIntersecting) {
+    //       detail.observer.unobserve(detail.entry.target);
 
-          const img = child.querySelector("img");
-          img.onload = () => (img.style.display = "");
-          img.src = img.dataset.src;
-        }
-      });
+    //       const img = child.querySelector("img");
+    //       img.onload = () => (img.style.display = "");
+    //       img.src = img.dataset.src;
+    //     }
+    //   });
 
-      useApp.instances.IntersectionObserver.observe(child);
-      useThis.values.observes.push(child);
-    });
+    //   useApp.instances.IntersectionObserver.observe(child);
+    //   useThis.values.observes.push(child);
+    // });
 
     if (!episodes.length) {
       $elements.episodes.innerHTML = `
-                <div class="div_Qm4cPUn">
-                    <div id="itemFalse" class="div_b14S3dH">
-                        ${useApp.icon.get("fi fi-rr-search-alt")}
-                        <h3>No hay capitulos</h3>
-                    </div>
-                </div>
-            `;
+        <div class="div_Qm4cPUn">
+          <div id="itemFalse" class="div_b14S3dH">
+            ${useApp.icon.get("fi fi-rr-search-alt")}
+            <h3>No hay capitulos</h3>
+          </div>
+        </div>
+      `;
     }
   };
 
@@ -1099,12 +1235,13 @@ var serieId = () => {
     useThis.values.observes = [];
   };
 
-  useThis.functions.updateHistory = (currentTime) => {
+  useThis.functions.updateHistory = (currentTime, duration = 0) => {
     if (useThis.values.isConnected) {
       const encodeQueryString = encodeQueryObject({
         route: "update-history-view",
         episode: useThis.values.episode,
         time_view: currentTime,
+        time_duration: duration,
         datetime: Date.now(),
         data_id: useThis.values.data_id,
         type: 3,
@@ -1118,10 +1255,11 @@ var serieId = () => {
       )
         .then((res) => res.json())
         .then((data) => {
-          console.log(data);
-          // if (data?.status) {
-          //   useThis.reactivity.isFavorite.value = data.type == 1;
-          // }
+          if (data?.status) {
+            if (document.body.contains($element)) {
+              useThis.functions.dataTrueInfo(useThis.reactivity.data.value);
+            }
+          }
         });
     }
   };
@@ -1132,6 +1270,7 @@ var serieId = () => {
       let status = false;
 
       video.src = "";
+      useThis.reactivity.dataTrueInfoRefresh = true;
 
       video.onloadedmetadata = () => {
         times = {};
@@ -1140,6 +1279,7 @@ var serieId = () => {
         const currentTime =
           parseInt(
             useThis.values.streaming?.episodes?.[useThis.values.episode]
+              ?.time_view
           ) || 0;
 
         video.currentTime = currentTime;
@@ -1151,14 +1291,20 @@ var serieId = () => {
 
           if (num > 0 && num % 15 == 0 && !times[num]) {
             times[num] = true;
-            useThis.functions.updateHistory(num);
+            useThis.functions.updateHistory(
+              num,
+              Math.ceil(video.duration) || 0
+            );
           }
         }
       };
 
       video.onseeked = () => {
         const currentTime = Math.floor(video.currentTime);
-        useThis.functions.updateHistory(currentTime);
+        useThis.functions.updateHistory(
+          currentTime,
+          Math.ceil(video.duration) || 0
+        );
 
         times = {};
         times[currentTime] = true;
@@ -1197,6 +1343,7 @@ var serieId = () => {
 
   $elements.episodes.addEventListener("click", (e) => {
     const item = e.target.closest("[data-item]");
+    const input = e.target.closest("input");
 
     if (item) {
       $elements.itemTrueOption.showPopover();
@@ -1253,20 +1400,15 @@ var serieId = () => {
           .join("");
       });
     }
-  });
 
-  $elements.favorite.addEventListener("click", () => {
-    // if (!useThis.values.isConnected) {
-    //   return (location.hash = "#/login");
-    // }
-
-    useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
-
-    const addFavorite = () => {
+    if (input) {
       const encodeQueryString = encodeQueryObject({
-        route: "toggle-favorites",
-        data_id: useThis.reactivity.data.value.TMDbId,
+        route: "toggle-history-view",
+        episode: `${input.dataset.season}-${input.dataset.episode}`,
+        datetime: Date.now(),
+        data_id: useThis.values.data_id,
         type: 3,
+        action: input.checked ? 1 : 0,
       });
 
       fetch(
@@ -1277,18 +1419,83 @@ var serieId = () => {
       )
         .then((res) => res.json())
         .then((data) => {
-          if (data == null) {
-            location.hash = "#/login";
-            return;
-          }
-
           if (data?.status) {
-            useThis.reactivity.isFavorite.value = data.type == 1;
+            input.checked = data.type == 1;
           }
         });
-    };
+    }
+  });
 
-    addFavorite();
+  $elements.favorite.addEventListener("click", () => {
+    $elements.favorite.setAttribute(
+      "data-action",
+      $elements.favorite.getAttribute("data-action") != 0 ? 0 : 1
+    );
+
+    // if (!useThis.values.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
+
+    useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-favorites",
+      data_id: useThis.reactivity.data.value.TMDbId,
+      type: 3,
+      action: $elements.favorite.dataset.action,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
+        if (data?.status) {
+          useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
+  });
+
+  $elements.inputView.addEventListener("click", () => {
+    // if (!useThis.values.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
+
+    // useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-views",
+      data_id: useThis.reactivity.data.value.TMDbId,
+      type: 3,
+      action: $elements.inputView.checked ? 1 : 0,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
+        if (data?.status) {
+          $elements.inputView.checked = data.type == 1;
+          // useThis.reactivity.isView.value = data.type == 1;
+        }
+      });
   });
 
   $elements.itemTrueOptionVideos.addEventListener("click", (e) => {
@@ -1364,6 +1571,7 @@ var serieId = () => {
   useApp.elements.meta.color.setAttribute("content", "#000000");
   useThis.functions.dataLoad();
 
+  useApp.functions.historyBack($element.querySelector("[data-history-back]"));
   return $element;
 };
 
@@ -2589,9 +2797,11 @@ var animeId = () => {
     params: useApp.routes.params(),
     reactivity: {
       isFavorite: defineVal(false),
+      isView: defineVal(false),
       load: defineVal(true),
       data: defineVal({}),
       episodes: defineVal([]),
+      dataTrueInfoRefresh: true,
     },
     functions: {},
     value: {
@@ -2615,7 +2825,7 @@ var animeId = () => {
             <header class="header_K0hs3I0 header_RtX3J1X">
 
                 <div class="div_uNg74XS">
-                    <a href="#/anime" class="button_lvV6qZu">
+                    <a href="#/anime" class="button_lvV6qZu" data-history-back>
                       ${useApp.icon.get("fi fi-rr-angle-small-left")}
                     </a>
                 </div>
@@ -2658,12 +2868,18 @@ var animeId = () => {
                       <div class="div_0JOSFlg">
                         <img id="poster" src="">
                       </div>
-                      <button id="play" class="button_bDfhQ4b" style="display:none">
-                        <small>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
-                        </small>
-                        <span>Reproducir</span>
-                      </button>
+                      <div class="div_cxFXOaL">
+                        <label class="label_zjZIMnZ">
+                          <input type="checkbox" id="inputView">
+                          <span style="display:flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check"><path d="M22.319,4.431,8.5,18.249a1,1,0,0,1-1.417,0L1.739,12.9a1,1,0,0,0-1.417,0h0a1,1,0,0,0,0,1.417l5.346,5.345a3.008,3.008,0,0,0,4.25,0L23.736,5.847a1,1,0,0,0,0-1.416h0A1,1,0,0,0,22.319,4.431Z"></path></svg></span>
+                        </label>
+                        <button id="play" class="button_bDfhQ4b" style="display:none">
+                          <small>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-sr-play"><path d="M20.492,7.969,10.954.975A5,5,0,0,0,3,5.005V19a4.994,4.994,0,0,0,7.954,4.03l9.538-6.994a5,5,0,0,0,0-8.062Z"></path></svg>
+                          </small>
+                          <span>Reproducir</span>
+                        </button>
+                      </div>
                       <hr class="hr_nTfcjTI">
                       <div class="div_aSwP0zW" style="text-align:center">
                           <span id="nextEpisode"></span>
@@ -2708,6 +2924,12 @@ var animeId = () => {
     $elements.favorite.innerHTML = useApp.icon.get(
       isFavorite ? "fi fi-sr-heart" : "fi fi-rr-heart"
     );
+
+    $elements.favorite.setAttribute("data-action", isFavorite ? 1 : 0);
+  });
+
+  useThis.reactivity.isView.observe((isView) => {
+    $elements.inputView.checked = isView;
   });
 
   useThis.reactivity.load.observe((load) => {
@@ -2735,7 +2957,9 @@ var animeId = () => {
         .join(", ");
       $elements.duration.textContent = `${episode_length} episodios`;
       $elements.date.textContent = data.status;
-      $elements.nextEpisode.innerHTML = `(nuevo episodio el <b>${data.nextEpisode}<b>)`;
+      $elements.nextEpisode.innerHTML = data.nextEpisode
+        ? `(nuevo episodio el <b>${data.nextEpisode}<b>)`
+        : "";
 
       $elements.episodes_range.innerHTML = Array(
         Math.floor(episode_length / 50) + 1
@@ -2770,55 +2994,7 @@ var animeId = () => {
         useApp.elements.meta.color.setAttribute("content", color);
       });
 
-      const data_id = parseInt(data.poster.split("/").pop());
-      useThis.value.data_id = data_id;
-
-      const body = {
-        data_id: data_id,
-        data_json: JSON.stringify(
-          Object.entries(data).reduce(
-            (prev, curr) => {
-              if (["identifier", "title", "poster", "type"].includes(curr[0])) {
-                prev[curr[0]] = curr[1];
-              }
-              return prev;
-            },
-            {
-              id: data_id,
-            }
-          )
-        ),
-        type: 1,
-      };
-
-      fetch(
-        useApp.url.server(
-          `/api.php?route=favorites-one&type=1&data_id=${data_id}`
-        ),
-        useApp.fetchOptions({
-          method: "POST",
-          body: JSON.stringify(body),
-        })
-      )
-        .then((res) => res.json())
-        .then((data) => {
-          useThis.value.streaming = data;
-          $elements.favorite.style.visibility = "";
-          useThis.value.isConnected = Boolean(data);
-
-          if (useThis.value.isConnected) {
-            useThis.reactivity.isFavorite.value = data?.favorite;
-
-            Array.from($elements.episodes.querySelectorAll("input")).forEach(
-              (input) => {
-                const episode = input.dataset.episode;
-
-                input.checked = data.episodes[episode] != undefined;
-                input.parentElement.style.display = "flex";
-              }
-            );
-          }
-        });
+      useThis.functions.dataTrueInfo(data);
     }
   });
 
@@ -2830,19 +3006,43 @@ var animeId = () => {
 
     $elements.episodes.innerHTML = array
       .map((episode) => {
-        const checked =
-          useThis.value.streaming?.episodes?.[episode] != undefined
-            ? "checked"
-            : "";
+        const episodeInfo = useThis.value.streaming?.episodes?.[episode];
+
+        const checked = episodeInfo != undefined ? "checked" : "";
 
         const displayInput = useThis.value.isConnected ? "" : "display:none";
 
         return `
-          <div data-episode="${episode}" style="display:flex; background: rgb(255 255 255 / 0.1); border-radius:5px">
-            <button class="button_fk0VHgU" data-item data-slug="${useThis.params.id}-${episode}" data-title="${useThis.params.id}" data-description="episodio ${episode}" data-episode="${episode}" style="flex:1; background: none;">${episode}</button>
-            <label style="width:40px; height:40px; display:flex; ${displayInput}">
-              <input type="checkbox" data-episode="${episode}" style="margin:auto;" ${checked}>
-            </label> 
+          <div data-episode="${episode}" class="div_eGwK6I1">
+            <button 
+              class="button_fk0VHgU" 
+              data-slug="${useThis.params.id}-${episode}" 
+              data-title="${useThis.params.id}" 
+              data-description="episodio ${episode}" 
+              data-episode="${episode}"
+              data-item>
+                <span>Episodio ${episode}</span>
+                <small>
+                  ${
+                    parseInt(episodeInfo?.time_view)
+                      ? "visto ".concat(
+                          useApp.functions.formatTime(episodeInfo.time_view)
+                        )
+                      : ""
+                  }
+                  ${
+                    parseInt(episodeInfo?.time_duration)
+                      ? "de ".concat(
+                          useApp.functions.formatTime(episodeInfo.time_duration)
+                        )
+                      : ""
+                  }
+                </small>
+            </button>
+            <label class="label_zjZIMnZ" style="${displayInput}">
+              <input type="checkbox" data-episode="${episode}" ${checked}>
+              <span style="display:flex"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check"><path d="M22.319,4.431,8.5,18.249a1,1,0,0,1-1.417,0L1.739,12.9a1,1,0,0,0-1.417,0h0a1,1,0,0,0,0,1.417l5.346,5.345a3.008,3.008,0,0,0,4.25,0L23.736,5.847a1,1,0,0,0,0-1.416h0A1,1,0,0,0,22.319,4.431Z"></path></svg></span>
+            </label>
           </div>
         `;
       })
@@ -2920,12 +3120,61 @@ var animeId = () => {
     });
   };
 
-  useThis.functions.updateHistory = (currentTime) => {
+  useThis.functions.dataTrueInfo = (data) => {
+    const data_id = parseInt(data.poster.split("/").pop());
+    useThis.value.data_id = data_id;
+
+    const body = {
+      data_id: data_id,
+      data_json: JSON.stringify(
+        Object.entries(data).reduce(
+          (prev, curr) => {
+            if (["identifier", "title", "poster", "type"].includes(curr[0])) {
+              prev[curr[0]] = curr[1];
+            }
+            return prev;
+          },
+          {
+            id: data_id,
+          }
+        )
+      ),
+      type: 1,
+    };
+
+    fetch(
+      useApp.url.server(
+        `/api.php?route=favorites-one&type=1&data_id=${data_id}`
+      ),
+      useApp.fetchOptions({
+        method: "POST",
+        body: JSON.stringify(body),
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.value.streaming = data;
+        $elements.favorite.style.visibility = "";
+        useThis.value.isConnected = Boolean(data);
+
+        if (useThis.value.isConnected) {
+          useThis.reactivity.isFavorite.value = Boolean(data?.favorite);
+          useThis.reactivity.isView.value = Boolean(data?.view);
+
+          useThis.reactivity.episodes.value = [
+            ...useThis.reactivity.episodes.value,
+          ];
+        }
+      });
+  };
+
+  useThis.functions.updateHistory = (currentTime, duration = 0) => {
     if (useThis.value.isConnected) {
       const encodeQueryString = encodeQueryObject({
         route: "update-history-view",
         episode: useThis.value.episode,
         time_view: currentTime,
+        time_duration: duration,
         datetime: Date.now(),
         data_id: useThis.value.data_id,
         type: 1,
@@ -2940,7 +3189,9 @@ var animeId = () => {
         .then((res) => res.json())
         .then((data) => {
           if (data?.status) {
-            useThis.reactivity.isFavorite.value = data.type == 1;
+            if (document.body.contains($element)) {
+              useThis.functions.dataTrueInfo(useThis.reactivity.data.value);
+            }
           }
         });
     }
@@ -2952,6 +3203,7 @@ var animeId = () => {
       let status = false;
 
       video.src = "";
+      useThis.reactivity.dataTrueInfoRefresh = true;
 
       video.onloadedmetadata = () => {
         times = {};
@@ -2960,25 +3212,33 @@ var animeId = () => {
         const currentTime =
           parseInt(
             useThis.value.streaming?.episodes?.[useThis.value.episode]
+              ?.time_view
           ) || 0;
 
         video.currentTime = currentTime;
+        useThis.functions.dataTrueInfo(useThis.reactivity.data.value);
       };
 
       video.ontimeupdate = (e) => {
         if (status) {
           const num = Math.floor(e.target.currentTime);
 
-          if (num > 0 && num % 15 == 0 && !times[num]) {
+          if (num > 0 && num % 30 == 0 && !times[num]) {
             times[num] = true;
-            useThis.functions.updateHistory(num);
+            useThis.functions.updateHistory(
+              num,
+              Math.ceil(video.duration) || 0
+            );
           }
         }
       };
 
       video.onseeked = () => {
         const currentTime = Math.floor(video.currentTime);
-        useThis.functions.updateHistory(currentTime);
+        useThis.functions.updateHistory(
+          currentTime,
+          Math.ceil(video.duration) || 0
+        );
 
         times = {};
         times[currentTime] = true;
@@ -3098,6 +3358,7 @@ var animeId = () => {
         datetime: Date.now(),
         data_id: useThis.value.data_id,
         type: 1,
+        action: input.checked ? 1 : 0,
       });
 
       fetch(
@@ -3108,10 +3369,9 @@ var animeId = () => {
       )
         .then((res) => res.json())
         .then((data) => {
-          console.log(data);
-          // if (data?.status) {
-          //   useThis.reactivity.isFavorite.value = data.type == 1;
-          // }
+          if (data?.status) {
+            input.checked = data.type == 1;
+          }
         });
     }
   });
@@ -3127,6 +3387,7 @@ var animeId = () => {
       route: "toggle-favorites",
       data_id: useThis.value.data_id,
       type: 1,
+      action: $elements.favorite.dataset.action,
     });
 
     fetch(
@@ -3144,6 +3405,39 @@ var animeId = () => {
 
         if (data?.status) {
           useThis.reactivity.isFavorite.value = data.type == 1;
+        }
+      });
+  });
+
+  $elements.inputView.addEventListener("change", () => {
+    // if (!useThis.value.isConnected) {
+    //   return (location.hash = "#/login");
+    // }
+
+    // useThis.reactivity.isFavorite.value = !useThis.reactivity.isFavorite.value;
+
+    const encodeQueryString = encodeQueryObject({
+      route: "toggle-views",
+      data_id: useThis.value.data_id,
+      type: 1,
+      action: $elements.inputView.checked ? 1 : 0,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (data == null) {
+          location.hash = "#/login";
+          return;
+        }
+
+        if (data?.status) {
+          useThis.reactivity.isView.value = data.type == 1;
         }
       });
   });
@@ -3197,6 +3491,7 @@ var animeId = () => {
     },
   });
 
+  useApp.functions.historyBack($element.querySelector("[data-history-back]"));
   return $element;
 };
 
@@ -3334,7 +3629,6 @@ var searchType = () => {
                 </form>
 
             </header>
-            <a href="#/historial" style="text-align:center; color: inherit; padding: 10px">Videos vistos</a>         
             <div class="div_IsTCHpN" style="padding:10px">
                 <div id="itemNull" class="loader-i" style="--color:var(--color-letter)"></div>
                 <div id="itemFalse" class="div_b14S3dH">
@@ -3527,7 +3821,7 @@ var searchTypeResult = () => {
 
         </div>
 
-    `);
+  `);
 
   const $elements = createObjectElement(
     $element.querySelectorAll("[id]"),
@@ -3819,6 +4113,15 @@ var favoritos = () => {
                         <h3>Favoritos</h3>
                         <span style="display:none">${useThis.params.type}</span>
                     </div>
+                </div>
+
+                <div class="div_x0cH0Hq">
+                    <a href="#/views" class="button_lvV6qZu">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-check-double"><path d="m1.283,7.697c-.385-.396-.375-1.029.021-1.414.396-.385,1.03-.376,1.414.021l4.089,4.211c.307.31.729.485,1.176.486.445,0,.864-.173,1.179-.488L18.29,1.296c.388-.394,1.021-.396,1.414-.007.393.389.396,1.022.007,1.414l-9.131,9.219c-.696.696-1.624,1.078-2.604,1.078-.982-.002-1.904-.387-2.596-1.085L1.283,7.697Zm22.423-.405c-.391-.391-1.025-.389-1.414.002l-13.087,13.12c-.378.378-.884.586-1.418.586-.536,0-1.039-.212-1.423-.599L1.699,15.784c-.394-.388-1.026-.386-1.415.008-.388.393-.385,1.025.007,1.414l4.659,4.61c.755.761,1.761,1.181,2.833,1.184,1.068,0,2.081-.416,2.837-1.173l13.088-13.121c.39-.391.389-1.024-.002-1.414Z"></path></svg>
+                    </a>
+                    <a href="#/historial" class="button_lvV6qZu">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-time-past"><path d="M12,0A11.972,11.972,0,0,0,4,3.073V1A1,1,0,0,0,2,1V4A3,3,0,0,0,5,7H8A1,1,0,0,0,8,5H5a.854.854,0,0,1-.1-.021A9.987,9.987,0,1,1,2,12a1,1,0,0,0-2,0A12,12,0,1,0,12,0Z"></path><path d="M12,6a1,1,0,0,0-1,1v5a1,1,0,0,0,.293.707l3,3a1,1,0,0,0,1.414-1.414L13,11.586V7A1,1,0,0,0,12,6Z"></path></svg>
+                    </a>  
                 </div>
 
             </header>
@@ -4218,7 +4521,7 @@ var historial = () => {
             <header class="header_K0hs3I0">
  
                 <div class="div_uNg74XS div_McPrYGP">
-                    <a href="#/search/pelicula" class="button_lvV6qZu">
+                    <a href="#/favoritos" class="button_lvV6qZu">
                       ${useApp.icon.get("fi fi-rr-angle-small-left")}
                     </a>
                     <div class="div_sZZicpN">  
@@ -4673,7 +4976,7 @@ var login = () => {
         <header class="header_K0hs3I0">
 
             <div class="div_uNg74XS">
-                <a href="#/" class="button_lvV6qZu">
+                <a href="#/" class="button_lvV6qZu" data-history-back>
                   ${useApp.icon.get("fi fi-rr-angle-small-left")}
                 </a>
                 <h3 id="textTitle"></h3>
@@ -4695,7 +4998,7 @@ var login = () => {
                   <span id="spanLoad">Recibir codigo</span>
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-envelope"><path d="M19,1H5A5.006,5.006,0,0,0,0,6V18a5.006,5.006,0,0,0,5,5H19a5.006,5.006,0,0,0,5-5V6A5.006,5.006,0,0,0,19,1ZM5,3H19a3,3,0,0,1,2.78,1.887l-7.658,7.659a3.007,3.007,0,0,1-4.244,0L2.22,4.887A3,3,0,0,1,5,3ZM19,21H5a3,3,0,0,1-3-3V7.5L8.464,13.96a5.007,5.007,0,0,0,7.072,0L22,7.5V18A3,3,0,0,1,19,21Z"></path></svg>
               </button>
-              <a href="#/register" class="a_8hzaMUg" style="display:none">
+              <a href="#/register" class="a_8hzaMUg">
                   <span>registro</span>
                   ${useApp.icon.get("fi fi-rr-arrow-right")}
               </a>
@@ -4786,6 +5089,7 @@ var login = () => {
     $elements.form2.style.display = "none";
   });
 
+  // useApp.functions.historyBack($element.querySelector("[data-history-back]"));
   return $element;
 };
 
@@ -5007,10 +5311,13 @@ var profile = () => {
       lsatname: $elements.form.lastname.value.trim(),
     };
 
-    fetch(useApp.url.server(`/api.php?${encodeQueryString}`), {
-      method: "PATCH",
-      body: JSON.stringify(body),
-    })
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "PATCH",
+        body: JSON.stringify(body),
+      })
+    )
       .then((res) => res.json())
       .then((data) => {
         if (data?.status) alert("Datos actualizados");
@@ -5057,6 +5364,411 @@ var profile = () => {
   return $element;
 };
 
+var views = () => {
+  const useApp = window.dataApp;
+  const useThis = {
+    params: useApp.routes.params(),
+    reactivity: {
+      load: defineVal(true),
+      Data: defineVal([]),
+    },
+    values: {
+      observes: [],
+    },
+    function: {
+      dataLoad: () => {},
+    },
+    functions: {},
+  };
+
+  const $element = createNodeElement(`
+
+        <div class="div_Xu02Xjh">
+
+            <header class="header_K0hs3I0">
+ 
+                <div class="div_uNg74XS div_McPrYGP">
+                    <a href="#/favoritos" class="button_lvV6qZu">
+                      ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                    </a>
+                    <div class="div_sZZicpN">  
+                        <h3>Vistos</h3>
+                        <span style="display:none">${useThis.params.type}</span>
+                    </div>
+                </div>
+
+            </header>
+
+            <div class="div_BIchAsC">
+                <div id="buttonsFocus" data-gender="Todos" class="div_O73RBqH">
+
+                    ${Object.entries({
+                      anime: "Animes",
+                      pelicula: "peliculas",
+                      serie: "series",
+                      // youtube: "YT Videos",
+                    })
+                      .map((entries, index) => {
+                        return `
+                        <button 
+                          data-gender="${entries[0]}" 
+                          class="${index == 0 ? "focus" : ""}">
+                        ${entries[1]}
+                        </button>`;
+                      })
+                      .join("")}
+                </div>
+            </div>
+        
+            <div class="div_IsTCHpN">
+                <div id="itemNull" class="loader-i" style="--color:var(--color-letter)"></div>
+                <div id="itemFalse" class="div_b14S3dH">
+                  ${useApp.icon.get("fi fi-rr-search-alt")}
+                  <h3>sin resultados</h3>
+                </div>
+
+                <div id="itemTrue" class="">
+                    <div id="itemTrueLoad" class="div_Qm4cPUn">
+                        <div class="loader-i" style="--color:var(--color-letter)"></div>
+                    </div>
+                </div>
+                
+            </div>
+
+        </div>
+
+    `);
+
+  const $elements = createObjectElement(
+    $element.querySelectorAll("[id]"),
+    "id",
+    true
+  );
+  // const renderObjectElement = new RenderObjectElement($elements);
+
+  useThis.function.dataRenderAnime = (Data) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(document.createTextNode(""));
+    fragment.append(
+      ...Data.map((data) => {
+        const url = useApp.url.img(data.poster);
+        const href = data.href?.split("/").pop();
+
+        const element = createNodeElement(`
+            <a 
+              href="#/anime/${data?.identifier ?? href}" 
+              class="div_SQpqup7" 
+              data-item>
+
+                <div class="div_fMC1uk6">
+                    <img src="" alt="" data-src="${url}" style="display:none">
+                    <span>${data.type ?? ""}</span>
+                </div>
+                <div class="div_9nWIRZE">
+                    <p>${data.title}</p>
+                </div>
+
+            </a>
+        `);
+
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
+        return element;
+      })
+    );
+
+    $elements.itemTrue.append(fragment);
+    $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
+  };
+
+  useThis.function.dataRenderPeliculaSerie = (Data) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(document.createTextNode(""));
+    fragment.append(
+      ...Data.map((data) => {
+        const slug = data.url.slug
+          .split("/")
+          .map((name, index) => {
+            if (index == 0) {
+              if (name == "movies") return "pelicula";
+              else if (name == "series") return "serie";
+            }
+            return name;
+          })
+          .join("/");
+
+        if (data.images.poster == null) return "";
+
+        const url = useApp.url.img(
+          `https://cuevana.biz/_next/image?url=${data.images.poster}&w=256&q=50`
+        );
+
+        const element = createNodeElement(`
+          <a 
+            href="#/${slug.split("/")[0]}/${data.TMDbId}" 
+            class="div_SQpqup7" data-item>
+
+              <div class="div_fMC1uk6">
+                  <img src="" alt="" data-src="${url}" style="display:none">
+                  <span>${slug.split("/")[0]}</span>
+              </div>
+              <div class="div_9nWIRZE">
+                  <p>${data.titles.name}</p>
+              </div>
+          </a>    
+        `);
+
+        element.addEventListener("_IntersectionObserver", ({ detail }) => {
+          if (detail.entry.isIntersecting) {
+            detail.observer.unobserve(detail.entry.target);
+
+            const img = element.querySelector("img");
+            img.onload = () => (img.style.display = "");
+            img.src = img.dataset.src;
+          }
+        });
+
+        useApp.instances.IntersectionObserver.observe(element);
+        useThis.values.observes.push(element);
+        return element;
+      })
+    );
+
+    $elements.itemTrue.append(fragment);
+    $elements.itemTrueLoad.remove();
+
+    if (Data.length === 25) {
+      $elements.itemTrue.append($elements.itemTrueLoad);
+      useApp.instances.IntersectionObserver.observe($elements.itemTrueLoad);
+    }
+  };
+
+  useThis.function.dataRenderYoutube = (Data) => {
+    const fragment = document.createDocumentFragment();
+    fragment.append(
+      ...Data.map((data) => {
+        return createNodeElement(`
+                <a 
+                  href="#/youtube/${data.videoId}" 
+                  class="div_EJlRW2l" data-item>
+
+                    <div class="div_zcWgA0o">
+                        <img 
+                          src="${data.thumbnail.thumbnails[0].url}" 
+                          alt="">
+                        <span>
+                          ${data.author || data.ownerText.runs[0].text}
+                        </span>
+                    </div>
+                    <div class="div_9nWIRZE">
+                      <p>
+                        ${
+                          data.title.runs ? data.title.runs[0].text : data.title
+                        }
+                      </p>
+                    </div>
+    
+                </a>
+            `);
+      })
+    );
+
+    $elements.itemTrue.append(fragment);
+    $elements.itemTrueLoad.remove();
+  };
+
+  useThis.function.dataLoadAnime = () => {
+    const encodeQueryString = encodeQueryObject({
+      route: "views",
+      type: 1,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => JSON.parse(data.data_json))
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
+  };
+
+  useThis.function.dataLoadPeliculaSerie = (type) => {
+    const encodeQueryString = encodeQueryObject({
+      route: "views",
+      type: type == "pelicula" ? 2 : 3,
+      start: $elements.itemTrue.querySelectorAll("[data-item]").length,
+      end: 25,
+    });
+
+    fetch(
+      useApp.url.server(`/api.php?${encodeQueryString}`),
+      useApp.fetchOptions({
+        method: "GET",
+      })
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        useThis.reactivity.load.value = true;
+        useThis.reactivity.Data.value = Array.isArray(data)
+          ? data.map((data) => JSON.parse(data.data_json))
+          : [];
+        // useThis.reactivity.Data.value = JSON.parse(
+        //   localStorage.getItem("favorite_anime")
+        // );
+        useThis.reactivity.load.value = false;
+      });
+
+    // useThis.reactivity.load.value = true;
+    // useThis.reactivity.Data.value = JSON.parse(
+    //   localStorage.getItem(
+    //     type == "pelicula" ? "favorite_pelicula" : "favorite_serie"
+    //   )
+    // );
+    // useThis.reactivity.load.value = false;
+  };
+
+  useThis.function.dataLoadYoutube = () => {
+    useThis.reactivity.load.value = true;
+    useThis.reactivity.Data.value = JSON.parse(
+      localStorage.getItem("favorite_yt_video")
+    );
+    useThis.reactivity.load.value = false;
+  };
+
+  useThis.function.dataLoad = () => {
+    const type = $elements.buttonsFocus
+      .querySelector("button.focus")
+      .getAttribute("data-gender");
+    $elements.itemTrue.setAttribute(
+      "class",
+      ["anime", "pelicula", "serie"].includes(type)
+        ? "div_qsNmfP3"
+        : "div_FtxwFbU"
+    );
+
+    if (["pelicula", "serie"].includes(type)) {
+      return useThis.function.dataLoadPeliculaSerie(type);
+    }
+
+    if (type == "anime") {
+      return useThis.function.dataLoadAnime();
+    }
+
+    if (type == "youtube") {
+      return useThis.function.dataLoadYoutube();
+    }
+  };
+
+  useThis.functions.unobserve = () => {
+    for (const observe of useThis.values.observes) {
+      useApp.instances.IntersectionObserver.unobserve(observe);
+    }
+
+    useThis.values.observes = [];
+  };
+
+  $elements.buttonsFocus.addEventListener("click", (e) => {
+    const button = e.target.closest("button");
+    if (button) {
+      Array.from(
+        $elements.buttonsFocus.querySelectorAll("button.focus")
+      ).forEach((button) => button.classList.remove("focus"));
+      button.classList.add("focus");
+
+      useThis.reactivity.load.value = true;
+      $elements.itemTrue.innerHTML = "";
+
+      useThis.functions.unobserve();
+      useThis.function.dataLoad();
+    }
+  });
+
+  $elements.itemTrueLoad.addEventListener(
+    "_IntersectionObserver",
+    ({ detail }) => {
+      if (detail.entry.isIntersecting) {
+        detail.observer.unobserve(detail.entry.target);
+        useThis.function.dataLoad();
+      }
+    }
+  );
+
+  addEventListener(
+    "hashchange",
+    () => {
+      useThis.functions.unobserve();
+    },
+    { once: true }
+  );
+
+  useThis.reactivity.load.observe((load) => {
+    const dataItem = $elements.itemTrue.querySelector("[data-item]");
+
+    const render = {
+      itemNull: load,
+      itemFalse: !load && !dataItem,
+      itemTrue: !load && !!dataItem,
+    };
+
+    Object.entries(render).forEach((entries) => {
+      $elements[entries[0]].style.display = entries[1] ? "" : "none";
+    });
+  });
+
+  useThis.reactivity.Data.observe((Data) => {
+    {
+      const type = $elements.buttonsFocus
+        .querySelector("button.focus")
+        .getAttribute("data-gender");
+
+      Data = Data.filter((data) => Object.keys(data).length);
+
+      if (["pelicula", "serie"].includes(type)) {
+        return useThis.function.dataRenderPeliculaSerie(Data);
+      }
+
+      if (type == "anime") {
+        return useThis.function.dataRenderAnime(Data);
+      }
+
+      if (type == "youtube") {
+        return useThis.function.dataRenderYoutube(Data);
+      }
+    }
+  });
+
+  useThis.function.dataLoad();
+
+  return $element;
+};
+
 var routes = () => {
   const useApp = window.dataApp;
 
@@ -5082,17 +5794,34 @@ var routes = () => {
 
     { hash: "/favoritos", callback: () => routesPrivate(favoritos) },
     { hash: "/historial", callback: () => routesPrivate(historial) },
+    { hash: "/views", callback: () => routesPrivate(views) },
   ]);
 
-  addEventListener("hashchange", () => {
+  {
+    if (history.length <= 2 || history.state == null) {
+      history.replaceState({ start: true }, null, location.href);
+    }
+  }
+
+  addEventListener("hashchange", (e) => {
+    let uuid = history.state?.uuid ?? useApp.functions.generateUUID();
+
+    if (!Boolean(e instanceof CustomEvent) && history.state == null) {
+      history.replaceState({ start: false, uuid }, null, location.href);
+    }
+
     useApp.elements.meta.color.setAttribute(
       "content",
       localStorage.getItem("theme") == "light" ? "#F7F7F7" : "#000000"
     );
 
     $element.innerHTML = "";
-    if (navigator.onLine) $element.append(useApp.routes.get() || "");
-    else $element.append(offline());
+    if (navigator.onLine) {
+      // useThis.values.pages[uuid] || useApp.routes.get() || "";
+      $element.append(useApp.routes.get() || "");
+    } else {
+      $element.append(offline());
+    }
   });
 
   const $element = createNodeElement('<div class="routes"></div>');
