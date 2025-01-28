@@ -1528,7 +1528,7 @@ var serieId = () => {
       if ("mediaSession" in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
           title: $elements.title.textContent,
-          artist: `T${season.padStart(2, "0")}C${episode.padStart(2, "0")}`,
+          artist: `T${season.padStart(2, "0")} E${episode.padStart(2, "0")}`,
           album: "Serie",
           artwork: [
             {
@@ -4650,10 +4650,27 @@ var historial = () => {
   useThis.function.dataRenderPeliculaSerie = (Data, type) => {
     const template = document.createElement("div");
     template.innerHTML = Data.map((data) => {
-      let seasonAndEpisode = type;
-
       const date = new Date(data.other.datetime);
+
+      const url = useApp.url.img(
+        `https://cuevana.biz/_next/image?url=${data.images.poster}&w=256&q=50`
+      );
+
+      let seasonAndEpisode = type;
       let fechaFormateada = "";
+
+      if (type == "serie") {
+        const [season, episode] = data.other.episode.split("-");
+        if (!episode) return "";
+
+        seasonAndEpisode = `
+          T${season.padStart(2, "0")}
+          E${episode.padStart(2, "0")}
+        `;
+      }
+
+      if (data.images.poster == null) return "";
+
       if (!useThis.values.dates[date.toLocaleDateString()]) {
         useThis.values.dates[date.toLocaleDateString()] = true;
         fechaFormateada = date.toLocaleDateString("es-ES", {
@@ -4662,21 +4679,6 @@ var historial = () => {
           year: "numeric",
         });
       }
-
-      if (type == "serie") {
-        const [season, episode] = data.other.episode.split("-");
-
-        seasonAndEpisode = `S${season.padStart(2, "0")}E${episode.padStart(
-          2,
-          "0"
-        )}`;
-      }
-
-      if (data.images.poster == null) return "";
-
-      const url = useApp.url.img(
-        `https://cuevana.biz/_next/image?url=${data.images.poster}&w=256&q=50`
-      );
 
       return `
 
