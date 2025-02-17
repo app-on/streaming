@@ -1,6 +1,21 @@
 
 /* ----- APP -- APP.CSS ----- */
 
+:root {
+  --app-color-background: #f7f7f7;
+  --app-color-background-second: #ffffff;
+  --app-color-background-ii: #ffffff;
+  --app-color-background-transparent: rgb(0 0 0 / 0.1);
+  --app-color-letter: #000000;
+  --app-color-letter-second: #ffffff;
+  --app-color-letter-ii: #ffffff;
+  --app-color-item: #ffffff;
+  --app-color-item-second: #000000;
+  --app-color-item-ii: #000000;
+  --app-color-item-third: #f7f7f7;
+  --app-color-item-iii: #f7f7f7;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -10,7 +25,7 @@
 
 body {
   font-family: "Montserrat", sans-serif;
-  background: var(--color-background);
+  background: var(--app-color-background);
   user-select: none;
   overscroll-behavior: contain;
 }
@@ -18,7 +33,7 @@ body {
 svg {
   width: 15px;
   height: 15px;
-  fill: var(--color-letter);
+  fill: var(--app-color-letter);
 }
 
 button {
@@ -41,7 +56,6 @@ input {
 }
 
 .container {
-  background: green;
   flex: 1;
 
   display: flex;
@@ -66,11 +80,43 @@ input {
   flex-direction: column;
   text-align: center;
 
-  color: var(--color-letter);
+  color: var(--app-color-letter);
 
   & svg {
     width: 100px;
     height: 100px;
+  }
+}
+
+.app-form-label-checkbox {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+
+  & label {
+    all: unset;
+    display: flex;
+    padding: 10px 20px;
+    border-radius: 20px;
+
+    cursor: pointer;
+    pointer-events: initial;
+
+    color: var(--app-color-letter);
+
+    &:has(input:checked) {
+      background: var(--app-color-letter);
+      color: var(--app-color-item);
+    }
+  }
+
+  & input {
+    display: none;
+  }
+
+  & span {
+    font-size: 13px;
+    white-space: nowrap;
   }
 }
 
@@ -246,8 +292,8 @@ input {
 }
 
 .div_q97S60f {
-  background: var(--color-item);
-  color: var(--color-letter);
+  background: var(--app-color-item);
+  color: var(--app-color-letter);
 
   height: 60px;
   padding: 10px;
@@ -322,15 +368,15 @@ input {
   & svg {
     width: 100px;
     height: 100px;
-    fill: var(--color-letter);
+    fill: var(--app-color-letter);
   }
 }
 
 /* ----- APP -- INPUTS.CSS ----- */
 
 .label_ieXcceLhkyD2WGY {
-  --background: var(--color-background);
-  --color: var(--color-letter);
+  --background: var(--app-color-background);
+  --color: var(--app-color-letter);
   position: relative;
   display: flex;
   background: var(--background);
@@ -383,8 +429,8 @@ input {
 }
 
 .label_RLkFTU2uXJoKahS {
-  --background: var(--color-background);
-  --color: var(--color-letter);
+  --background: var(--app-color-background);
+  --color: var(--app-color-letter);
 
   position: relative;
   display: flex;
@@ -515,8 +561,8 @@ input {
 /* ----- APP -- PAGES.CSS ----- */
 
 .div_Xu02Xjh {
-  background: var(--color-background);
-  color: var(--color-letter);
+  background: var(--app-color-background);
+  color: var(--app-color-letter);
 
   position: absolute;
   inset: 0;
@@ -549,7 +595,7 @@ input {
   width: 100%;
   height: 60px;
 
-  background: var(--color-background);
+  background: var(--app-color-background);
   display: grid;
   grid-template-columns: auto 1fr;
   padding: 10px;
@@ -562,7 +608,7 @@ input {
   }
 
   & input {
-    background: var(--color-item);
+    background: var(--app-color-item);
     border: none;
     outline: none;
     padding: 0 20px;
@@ -593,8 +639,8 @@ input {
 }
 
 .button_lvV6qZu {
-  background: var(--color-item);
-  color: var(--color-letter);
+  background: var(--app-color-item);
+  color: var(--app-color-letter);
 
   min-width: 40px;
   height: 40px;
@@ -619,7 +665,7 @@ input {
 
   display: flex;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-letter) var(--color-background);
+  scrollbar-color: var(--app-color-letter) var(--app-color-background);
 }
 
 .div_b14S3dH {
@@ -738,6 +784,230 @@ input {
   inset: 0;
 
   z-index: 9999;
+}
+
+/* ----- ASSETS -- NAVIGATE.CSS ----- */
+
+.div_kpAeq7EQQSpIEGP {
+  width: 60px;
+  height: 100%;
+  display: none;
+
+  & button {
+    background: none;
+    border: none;
+    outline: none;
+  }
+}
+
+.div_AzB9StLbTItJbDG {
+  margin: auto;
+
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.div_oMejC4uoPU6Yno {
+  background: var(--app-color-letter);
+  width: 40px;
+
+  margin: 10px;
+  border-radius: 40px;
+
+  display: grid;
+
+  background: var(--app-color-item);
+}
+
+.button_HBGW4tQbCUaCeQi {
+  position: relative;
+  width: 40px;
+  height: 40px;
+
+  border-radius: 50%;
+  overflow: hidden;
+
+  font-size: 15px;
+  font-weight: bolder;
+
+  & img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.button_9hVeDz4jIfQ5n2a {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  & svg {
+    width: 15px;
+    height: 15px;
+    fill: var(--app-color-letter);
+  }
+}
+
+.div_JJ29L3eoT4hcf1x {
+  flex: 1;
+
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.div_ynsbf8jCYmc6NsK {
+  width: 100%;
+  padding: 10px;
+  gap: 10px;
+
+  display: grid;
+}
+
+.button_vz3gd83JzdjM7pt {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  border-radius: 15px;
+
+  &.active {
+    background: var(--app-color-letter);
+    background: #000;
+    & svg {
+      fill: var(--app-color-item);
+      fill: #fff;
+    }
+  }
+
+  & svg {
+    width: 15px;
+    height: 15px;
+    fill: var(--app-color-letter);
+  }
+
+  & img {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+.hr_GN4g3jScFGLhbB8 {
+  margin: auto;
+  background: rgb(181 178 178 / 0.3);
+  width: 40px;
+  height: 1px;
+  border: none;
+  border-radius: 1px;
+}
+
+.div_Hc2LDqQ {
+  position: absolute;
+  inset: 0;
+
+  background: var(--app-color-item-second);
+  color: var(--app-color-letter-second);
+
+  font-weight: bolder;
+  font-size: 15px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@media (min-width: 750px) {
+  .div_kpAeq7EQQSpIEGP {
+    display: flex;
+  }
+}
+
+/* ----- ASSETS -- NAVIGATEBOTTOM.CSS ----- */
+
+.div_U1rCCk1 {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  overflow: hidden;
+}
+
+.div_ZnL3gfK {
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+
+  & a,
+  button {
+    background: none;
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    border-radius: 50%;
+    overflow: hidden;
+
+    &.active {
+      background: var(--app-color-item-second);
+      background: #000;
+      border-radius: 15px;
+
+      & svg {
+        fill: var(--app-color-letter-second);
+        fill: #fff;
+      }
+    }
+
+    &.a_1OKAZpH {
+      position: relative;
+
+      background: var(--app-color-item-second);
+      color: var(--app-color-letter-second);
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      border-radius: 50%;
+
+      font-size: 15px;
+      font-weight: bolder;
+    }
+  }
+}
+
+.img_bAVjzSy {
+  width: 20px;
+  height: 20px;
+}
+
+.img_lyvLR4C {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (min-width: 750px) {
+  .div_U1rCCk1 {
+    display: none;
+  }
 }
 
 /* ----- COMPONENTS -- MODALITEM.CSS ----- */
@@ -875,7 +1145,7 @@ input {
   position: fixed;
   inset: 0;
 
-  background: var(--color-background-transparent);
+  background: var(--app-colorbackground-transparent);
   backdrop-filter: blur(5px);
   display: flex;
 
@@ -893,8 +1163,8 @@ input {
   margin: auto;
   margin-bottom: initial;
 
-  background: var(--color-item);
-  color: var(--color-letter);
+  background: var(--app-coloritem);
+  color: var(--app-colorletter);
 
   width: min(100%, 450px);
   max-height: 60%;
@@ -915,7 +1185,9 @@ input {
 
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-letter) transparent;
+  scrollbar-color: #fff transparent;
+
+  color: #fff;
 }
 
 .button_NuUj5A6 {
@@ -933,8 +1205,7 @@ input {
 }
 
 .span_eNUkEzu {
-  background: var(--color-letter);
-  color: var(--color-item);
+  background: rgb(255 255 255 / 0.1);
 
   width: 40px;
   height: 40px;
@@ -1345,14 +1616,14 @@ input {
 }
 
 .div_4Pov3Cz {
-  background: var(--color-item);
+  background: var(--app-color-item);
   display: grid;
 
   border-radius: 15px;
 }
 
 .a_lW7dgpk {
-  background: var(--color-item);
+  background: var(--app-color-item);
   /* background: rgb(255 255 255 / 0.1); */
   /* background: #1A1A1A; */
 
@@ -1378,10 +1649,36 @@ input {
   }
 }
 
+.div_klylpyg {
+  background: var(--app-color-item);
+  position: relative;
+
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  overflow: hidden;
+  border-radius: 15px;
+
+  & small {
+    display: flex;
+  }
+
+  & select {
+    position: absolute;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
 /* ----- PAGE -- LOGIN.CSS ----- */
 
 .div_7wOjGZ8 {
-  background: var(--color-background);
+  background: var(--app-color-background);
   position: fixed;
   inset: 0;
 
@@ -1398,7 +1695,7 @@ input {
 
   border-radius: 15px;
 
-  color: var(--color-letter);
+  color: var(--app-color-letter);
 }
 
 .div_Y85zRC0 {
@@ -1408,8 +1705,8 @@ input {
 
 .label_L3539wR {
   position: relative;
-  background: var(--color-item);
-  color: var(--color-letter);
+  background: var(--app-color-item);
+  color: var(--app-color-letter);
 
   display: grid;
 
@@ -1446,8 +1743,8 @@ input {
 }
 
 .button_WU25psx {
-  background: var(--color-letter);
-  color: var(--color-item);
+  background: var(--app-color-letter);
+  color: var(--app-color-item);
 
   font-size: 15px;
 
@@ -1467,7 +1764,7 @@ input {
   font-weight: bold;
 
   & svg {
-    fill: var(--color-item);
+    fill: var(--app-color-item);
   }
 }
 
@@ -1497,15 +1794,15 @@ input {
 
   width: min(100%, 400px);
 
-  /* background: var(--color-item); */
-  color: var(--color-letter);
+  /* background: var(--app-color-item); */
+  color: var(--app-color-letter);
 
   /* aspect-ratio: 1 / 1; */
 }
 
 .div_70M5Jpt {
   flex: 1;
-  color: var(--color-letter);
+  color: var(--app-color-letter);
   text-align: center;
 
   display: flex;
@@ -1514,7 +1811,7 @@ input {
 }
 
 .label_0BFeKpk {
-  background: var(--color-item);
+  background: var(--app-color-item);
 }
 
 /* ----- PAGE -- PELICULA.CSS ----- */
@@ -1596,8 +1893,8 @@ input {
 
 .div_mrXVL9t {
   background: #000000;
-  --color-letter: #ffffff;
-  --color-item: #000000;
+  --app-color-letter: #ffffff;
+  --app-color-item: #000000;
 }
 
 .header_RtX3J1X {
@@ -1620,17 +1917,9 @@ input {
 }
 
 .div_hqzh2NV {
-  width: 100%;
-  min-height: 100%;
-  /* margin: auto;
+  margin: auto;
   margin-top: initial;
-  width: 100%;
-  height: 100%;
-
-  display: grid;
-  gap: 10px;
-
-  background: purple; */
+  width: min(100%, 750px);
 }
 
 .div_rCXoNm8 {
@@ -1727,8 +2016,11 @@ input {
   width: min(100%, 1000px);
 
   display: grid;
-  padding: 20px;
-  gap: 20px;
+  padding: 15px 0;
+  /* padding: 20px; */
+  gap: 15px;
+
+  /* background: purple; */
 }
 
 .div_0JOSFlg {
@@ -1783,6 +2075,41 @@ input {
   height: 1px;
 }
 
+.div_mu7pmfs {
+  padding: 10px;
+  display: flex;
+}
+
+.div_xesi90n {
+  background: rgb(255 255 255 / 0.1);
+  height: 40px;
+
+  display: flex;
+  border-radius: 5px;
+
+  & select {
+    background: none;
+    border: none;
+    outline: none;
+
+    padding-left: 10px;
+    color: #fff;
+  }
+
+  & option {
+    background: #1a1a1a;
+  }
+
+  & button {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
 /* ----- PAGE -- PELICULA_SERIE.CSS ----- */
 
 .div_eRsphYD {
@@ -1792,7 +2119,7 @@ input {
   display: flex;
   flex-direction: column;
 
-  color: var(--color-letter);
+  color: var(--app-color-letter);
 }
 
 .div_IsTCHpN {
@@ -1801,7 +2128,7 @@ input {
 
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-letter) var(--color-background);
+  scrollbar-color: var(--app-color-letter) var(--app-color-background);
 }
 
 .div_qsNmfP3 {
@@ -1862,7 +2189,7 @@ input {
 .div_9nWIRZE {
   padding: 10px 0;
   width: 100%;
-  color: var(--color-letter);
+  color: var(--app-color-letter);
 
   & p {
     word-break: break-word;
@@ -1884,7 +2211,7 @@ input {
   overflow: hidden;
   overflow-x: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-letter) transparent;
+  scrollbar-color: var(--app-color-letter) transparent;
 }
 
 .div_O73RBqH {
@@ -1897,11 +2224,11 @@ input {
     white-space: nowrap;
     overflow: hidden;
 
-    color: var(--color-letter);
+    color: var(--app-color-letter);
 
     &.focus {
-      background: var(--color-letter);
-      color: var(--color-item);
+      background: var(--app-color-letter);
+      color: var(--app-color-item);
     }
   }
 }
@@ -1918,6 +2245,14 @@ input {
 
 /* ----- PAGE -- SEARCHTYPE.CSS ----- */
 
+.header_LOF628f {
+  width: 100%;
+  height: 60px;
+
+  padding: 10px;
+  display: flex;
+}
+
 .div_C2otGmQ {
   margin: auto;
   margin-top: initial;
@@ -1929,7 +2264,7 @@ input {
 .div_ywmleK1 {
   display: flex;
   border-top: 1px solid rgb(181 178 178 / 0.3);
-  color: var(--color-letter);
+  color: var(--app-color-letter);
 
   &:first-child {
     border-top: none;
@@ -1999,7 +2334,7 @@ input {
 
   display: flex;
   overflow: hidden;
-  background: var(--color-item);
+  background: var(--app-color-item);
   border-radius: 40px;
   padding-right: 5px;
 
@@ -2051,6 +2386,30 @@ input {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+.a_33g9UEa {
+  all: unset;
+  box-sizing: border-box;
+
+  flex: 1;
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+  cursor: pointer;
+}
+
+.small_rppYggX {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: var(--app-color-item);
+  border-radius: 15px;
 }
 
 /* ----- PAGE -- SERIE.CSS ----- */
@@ -2139,7 +2498,7 @@ input {
   overflow: hidden;
   overflow-x: auto;
   scrollbar-width: thin;
-  scrollbar-color: var(--color-letter) var(--color-background);
+  scrollbar-color: var(--app-color-letter) var(--app-color-background);
   width: 100%;
 
   background: #000000;
@@ -2154,11 +2513,11 @@ input {
     padding: 10px 20px;
     border-radius: 20px;
 
-    color: var(--color-letter);
+    color: var(--app-color-letter);
 
     &.focus {
-      background: var(--color-letter);
-      color: var(--color-item);
+      background: var(--app-color-letter);
+      color: var(--app-color-item);
     }
   }
 
@@ -2263,7 +2622,7 @@ input {
   width: min(100%, 450px);
   overflow: hidden;
 
-  background: var(--color-item);
+  background: var(--app-color-item);
   display: grid;
 
   border-radius: 15px;
@@ -2286,7 +2645,7 @@ input {
   margin-bottom: -30px;
 
   & button {
-    background: var(--color-letter);
+    background: var(--app-color-letter);
     width: 60px;
     height: 60px;
     border-radius: 50%;
@@ -2297,7 +2656,7 @@ input {
   }
 
   & svg {
-    fill: var(--color-item);
+    fill: var(--app-color-item);
   }
 }
 
@@ -2329,7 +2688,7 @@ input {
   position: fixed;
   inset: 0;
 
-  background: var(--color-background-transparent);
+  background: var(--app-color-background-transparent);
   backdrop-filter: blur(5px);
 
   display: flex;
@@ -2345,8 +2704,8 @@ input {
   position: relative;
 
   margin: auto;
-  background: var(--color-item);
-  color: var(--color-letter);
+  background: var(--app-color-item);
+  color: var(--app-color-letter);
 
   width: min(100%, 400px);
   display: grid;
@@ -2361,10 +2720,10 @@ input {
   gap: 10px;
 
   & select {
-    background: var(--color-item);
-    color: var(--color-letter);
+    background: var(--app-color-item);
+    color: var(--app-color-letter);
 
-    border: 1.25px solid var(--color-letter);
+    border: 1.25px solid var(--app-color-letter);
     outline: none;
 
     height: 60px;
@@ -2375,8 +2734,8 @@ input {
 }
 
 .button_UD5xzgy {
-  background: var(--color-letter);
-  color: var(--color-item);
+  background: var(--app-color-letter);
+  color: var(--app-color-item);
   height: 60px;
 
   border-radius: 60px;
@@ -2389,7 +2748,7 @@ input {
   padding: 0 20px;
 
   & svg {
-    fill: var(--color-item);
+    fill: var(--app-color-item);
   }
 }
 
