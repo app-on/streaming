@@ -267,6 +267,7 @@ var navigate = () => {
     { hash: "/search/*", callback: () => $elements.search },
     { hash: "/profile/*", callback: () => $elements.profile },
     { hash: "/login/*", callback: () => $elements.profile },
+    { hash: "/register/*", callback: () => $elements.profile },
   ]);
 
   addEventListener("hashchange", () => {
@@ -322,6 +323,7 @@ var navigateBottom = () => {
     { hash: "/search/*", callback: () => $elements.search },
     { hash: "/profile/*", callback: () => $elements.profile },
     { hash: "/login/*", callback: () => $elements.profile },
+    { hash: "/register/*", callback: () => $elements.profile },
   ]);
 
   addEventListener("hashchange", () => {
@@ -4263,16 +4265,11 @@ var register = () => {
   const useApp = window.dataApp;
   ({
     params: useApp.routes.params(),
-    reactivity: {
-      isFavorite: defineVal(false),
-      load: defineVal(true),
-      data: defineVal({}),
-      episodes: defineVal([]),
-    },
+
     functions: {},
   });
 
-  const $element = createNodeElement(`
+  const $element = useApp.MyFunction.createNodeElement(`
 
     <div class="div_Xu02Xjh">
 
@@ -4280,7 +4277,7 @@ var register = () => {
 
             <div class="div_uNg74XS">
                 <a href="#/" class="button_lvV6qZu">
-                  ${useApp.icon.get("fi fi-rr-angle-small-left")}
+                  ${useApp.svgIcon("fi fi-rr-angle-small-left")}
                 </a>
                 <h3 id="textTitle"></h3>
             </div>
@@ -4307,11 +4304,11 @@ var register = () => {
               </div>
               <button class="button_WU25psx">
                   <span id="spanLoad">Crear cuenta</span>
-                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+                  ${useApp.svgIcon("fi fi-rr-arrow-right")}
               </button>
               <a href="#/login" class="a_8hzaMUg">
                   <span>Iniciar sesion</span>
-                  ${useApp.icon.get("fi fi-rr-arrow-right")}
+                  ${useApp.svgIcon("fi fi-rr-arrow-right")}
               </a>
           </form>
 
@@ -4321,7 +4318,7 @@ var register = () => {
 
 `);
 
-  const $elements = createObjectElement(
+  const $elements = useApp.MyFunction.createObjectElement(
     $element.querySelectorAll("[id]"),
     "id",
     true
