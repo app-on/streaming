@@ -2915,6 +2915,10 @@ var offline = ()=>{
 };
 
 var searchType = () => {
+  if (!localStorage.getItem("search_history")) {
+    localStorage.setItem("search_history", "[]");
+  }
+
   const useApp = window.dataApp;
   const useThis = {
     params: useApp.routes.params(),
