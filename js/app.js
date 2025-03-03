@@ -94,7 +94,7 @@ var dataApp = () => {
     svgIcon: svgIcon(),
     mediaPlayer: new MediaPlayer(
       document.createDocumentFragment(),
-      "media-player-id-608349709553889"
+      "media-player-id-1741013416277"
     ),
     url: dataAppUrl(),
     elements: {
