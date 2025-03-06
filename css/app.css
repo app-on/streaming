@@ -884,10 +884,8 @@ input {
 
   &.active {
     background: var(--app-color-letter);
-    background: #000;
     & svg {
       fill: var(--app-color-item);
-      fill: #fff;
     }
   }
 
@@ -962,13 +960,11 @@ input {
     overflow: hidden;
 
     &.active {
-      background: var(--app-color-item-second);
-      background: #000;
+      background: var(--app-color-letter);
       border-radius: 15px;
 
       & svg {
-        fill: var(--app-color-letter-second);
-        fill: #fff;
+        fill: var(--app-color-item);
       }
     }
 
@@ -2546,6 +2542,116 @@ input {
 /* ----- PAGE -- SERIE2.CSS ----- */
 
 
+
+/* ----- PAGE -- SETTING.CSS ----- */
+
+.div_gVQO1KR {
+  margin: auto;
+  margin-top: initial;
+
+  width: min(100%, 750px);
+
+  display: grid;
+  gap: 10px;
+
+  justify-items: center;
+}
+
+.div_cq16fYP {
+  margin: auto;
+  display: grid;
+  width: 100%;
+  gap: 3px;
+
+  border-radius: 15px;
+  overflow: hidden;
+
+  & a {
+    all: unset;
+    box-sizing: border-box;
+
+    background: var(--app-color-item);
+    display: flex;
+    align-items: center;
+
+    padding: 10px;
+    padding-right: 20px;
+    gap: 10px;
+
+    cursor: pointer;
+  }
+
+  & span {
+    font-size: 15px;
+    flex: 1;
+  }
+
+  & small {
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}
+
+.div_zyykHbn {
+  display: grid;
+  text-align: center;
+  width: 100%;
+}
+
+/* ----- PAGE -- THEME.CSS ----- */
+
+.div_MN7ZWeX {
+  background: var(--app-color-background);
+  color: var(--app-color-letter);
+}
+
+.button_YWxwK2P {
+  background: var(--app-color-item);
+  & svg {
+    fill: var(--app-color-letter);
+  }
+}
+
+.div_cDfbXwR {
+  margin: auto;
+  margin-top: initial;
+  width: min(100%, 750px);
+
+  display: grid;
+}
+
+.div_0p76jdM {
+  display: grid;
+  border-bottom: 1.25px solid rgb(181 178 178 / 0.2);
+}
+
+.label_2F1ZTtw {
+  width: 100%;
+  height: 60px;
+  padding: 0 20px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &:has(input:checked) + div {
+    display: initial;
+  }
+}
+
+.div_VDMeCmA {
+  display: none;
+  padding: 10px;
+}
+
+.div_QKKEgOu {
+  background: var(--app-color-item);
+  border-radius: 15px;
+}
 
 /* ----- PAGE -- YOUTUBE.CSS ----- */
 

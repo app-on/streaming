@@ -94,7 +94,7 @@ var dataApp = () => {
     svgIcon: svgIcon(),
     mediaPlayer: new MediaPlayer(
       document.createDocumentFragment(),
-      "media-player-id-1741013416277"
+      "media-player-id-1741285515518"
     ),
     url: dataAppUrl(),
     elements: {
@@ -246,7 +246,7 @@ var navigate = () => {
                         <a id="favorite" href="#/favorite" class="button_vz3gd83JzdjM7pt">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-books"><path d="M23.786,19.492L16.713,1.836c-.624-1.529-2.376-2.269-3.911-1.645l-.925,.378c-.249,.102-.472,.244-.68,.402-.548-.594-1.326-.972-2.196-.972H3C1.346,0,0,1.346,0,3V21c0,1.654,1.346,3,3,3h6c1.654,0,3-1.346,3-3V8.895l5.304,13.242c.625,1.543,2.417,2.26,3.909,1.641l.926-.378c1.505-.574,2.286-2.434,1.647-3.907ZM13.574,7.446l2.778-1.132,4.171,10.412-2.778,1.132L13.574,7.446Zm-.942-5.025l.925-.378c.496-.206,1.097,.031,1.302,.543l.75,1.871-2.777,1.132-.747-1.866c-.208-.51,.038-1.095,.549-1.303ZM2,7h3v10H2V7Zm5,0h3v10h-3V7Zm3-4v2h-3V2h2c.551,0,1,.448,1,1ZM3,2h2v3H2V3c0-.552,.449-1,1-1Zm-1,19v-2h3v3H3c-.551,0-1-.448-1-1Zm7,1h-2v-3h3v2c0,.552-.449,1-1,1Zm12.929-.991c-.104,.247-.297,.438-.544,.539h0l-.926,.378c-.511,.206-1.095-.037-1.3-.54l-.669-1.671,2.778-1.132,.665,1.661c.102,.247,.101,.52-.003,.766Z"></path></svg>
                         </a>
-                        <a id="profile" href="#/profile" class="button_vz3gd83JzdjM7pt">
+                        <a id="profile" href="#/setting" class="button_vz3gd83JzdjM7pt">
                           ${useApp.svgIcon("fi fi-rr-user")}
                         </a>
                     </div>
@@ -266,6 +266,8 @@ var navigate = () => {
     { hash: "/historial", callback: () => $elements.favorite },
     { hash: "/search/*", callback: () => $elements.search },
     { hash: "/profile/*", callback: () => $elements.profile },
+    { hash: "/setting/*", callback: () => $elements.profile },
+    { hash: "/theme/*", callback: () => $elements.profile },
     { hash: "/login/*", callback: () => $elements.profile },
     { hash: "/register/*", callback: () => $elements.profile },
   ]);
@@ -303,7 +305,7 @@ var navigateBottom = () => {
                 <a id="favorite" href="#/favorite" class="button_vz3gd83JzdjM7pt">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" data-svg-name="fi fi-rr-books"><path d="M23.786,19.492L16.713,1.836c-.624-1.529-2.376-2.269-3.911-1.645l-.925,.378c-.249,.102-.472,.244-.68,.402-.548-.594-1.326-.972-2.196-.972H3C1.346,0,0,1.346,0,3V21c0,1.654,1.346,3,3,3h6c1.654,0,3-1.346,3-3V8.895l5.304,13.242c.625,1.543,2.417,2.26,3.909,1.641l.926-.378c1.505-.574,2.286-2.434,1.647-3.907ZM13.574,7.446l2.778-1.132,4.171,10.412-2.778,1.132L13.574,7.446Zm-.942-5.025l.925-.378c.496-.206,1.097,.031,1.302,.543l.75,1.871-2.777,1.132-.747-1.866c-.208-.51,.038-1.095,.549-1.303ZM2,7h3v10H2V7Zm5,0h3v10h-3V7Zm3-4v2h-3V2h2c.551,0,1,.448,1,1ZM3,2h2v3H2V3c0-.552,.449-1,1-1Zm-1,19v-2h3v3H3c-.551,0-1-.448-1-1Zm7,1h-2v-3h3v2c0,.552-.449,1-1,1Zm12.929-.991c-.104,.247-.297,.438-.544,.539h0l-.926,.378c-.511,.206-1.095-.037-1.3-.54l-.669-1.671,2.778-1.132,.665,1.661c.102,.247,.101,.52-.003,.766Z"></path></svg>
                 </a>
-                <a id="profile" href="#/profile" class="button_vz3gd83JzdjM7pt">
+                <a id="profile" href="#/setting" class="button_vz3gd83JzdjM7pt">
                   ${useApp.svgIcon("fi fi-rr-user")}
                 </a>
             </div>
@@ -322,6 +324,8 @@ var navigateBottom = () => {
     { hash: "/historial", callback: () => $elements.favorite },
     { hash: "/search/*", callback: () => $elements.search },
     { hash: "/profile/*", callback: () => $elements.profile },
+    { hash: "/setting/*", callback: () => $elements.profile },
+    { hash: "/theme/*", callback: () => $elements.profile },
     { hash: "/login/*", callback: () => $elements.profile },
     { hash: "/register/*", callback: () => $elements.profile },
   ]);
@@ -4148,7 +4152,7 @@ var login = () => {
         <header class="header_K0hs3I0">
 
             <div class="div_uNg74XS">
-                <a href="#/" class="button_lvV6qZu" data-history-back>
+                <a href="#/setting" class="button_lvV6qZu" data-history-back>
                   ${useApp.svgIcon("fi fi-rr-angle-small-left")}
                 </a>
                 <h3 id="textTitle"></h3>
@@ -4280,7 +4284,7 @@ var register = () => {
         <header class="header_K0hs3I0">
 
             <div class="div_uNg74XS">
-                <a href="#/" class="button_lvV6qZu">
+                <a href="#/setting" class="button_lvV6qZu">
                   ${useApp.svgIcon("fi fi-rr-angle-small-left")}
                 </a>
                 <h3 id="textTitle"></h3>
@@ -4415,7 +4419,7 @@ var profile = () => {
             <header class="header_K0hs3I0">
 
                 <div class="div_uNg74XS">
-                    <a href="#/" class="button_lvV6qZu">
+                    <a href="#/setting" class="button_lvV6qZu">
                       ${useApp.svgIcon("fi fi-rr-angle-small-left")}
                     </a>
                     <h3 id="textTitle">Actualizar datos</h3>
@@ -4524,6 +4528,238 @@ var profile = () => {
   return $element;
 };
 
+var theme = () => {
+  const useApp = window.dataApp;
+  const useThis = {
+    instances: {
+      // abortController: new AbortController(),
+    },
+    values: {
+      // themeCustom: useApp.MyFunction.callbackTryCatch(
+      //   () => JSON.parse(localStorage.getItem("theme-custom")),
+      //   {}
+      // ),
+    },
+    functions: {},
+    themes: {
+      dark: {
+        "--app-color-background": "#000000",
+        "--app-color-background-second": "#000000",
+        "--app-color-background-ii": "#000000",
+        "--app-color-background-transparent": "rgb(255 255 255 / 0.1)",
+        "--app-color-letter": "#ffffff",
+        "--app-color-letter-second": "#ffffff",
+        "--app-color-letter-ii": "#ffffff",
+        "--app-color-item": "#1A1A1A",
+        "--app-color-item-second": "#1A1A1A",
+        "--app-color-item-ii": "#1A1A1A",
+        "--app-color-item-third": "#1A1A1A",
+        "--app-color-item-iii": "#1A1A1A",
+      },
+      light: {
+        "--app-color-background": "#F7F7F7",
+        "--app-color-background-second": "#FFFFFF",
+        "--app-color-background-ii": "#FFFFFF",
+        "--app-color-background-transparent": "rgb(0 0 0 / 0.1)",
+        "--app-color-letter": "#000000",
+        "--app-color-letter-second": "#ffffff",
+        "--app-color-letter-ii": "#ffffff",
+        "--app-color-item": "#FFFFFF",
+        "--app-color-item-second": "#000000",
+        "--app-color-item-ii": "#000000",
+        "--app-color-item-third": "#F7F7F7",
+        "--app-color-item-iii": "#F7F7F7",
+      },
+      system: {},
+      custom: {},
+    },
+  };
+  const $element = useApp.MyFunction.createNodeElement(`
+        <div class="div_Xu02Xjh div_MN7ZWeX">
+            <header class="header_K0hs3I0">
+
+                <div class="div_uNg74XS">
+                    <a href="#/setting" class="button_lvV6qZu button_YWxwK2P">
+                        ${useApp.svgIcon("fi fi-rr-angle-small-left")}
+                    </a>
+                    <h3 id="textTitle">Tema</h3>
+                </div>
+
+            </header>
+            <div class="div_guZ6yID" style="padding:10px">
+                
+                <div class="div_cDfbXwR">
+                    <div class="div_0p76jdM">
+                        <label class="label_2F1ZTtw">
+                            <span>Tema claro</span>
+                            <input type="radio" name="name_Dokrc6U2gbEtz29wg2" data-theme="light" checked>
+                        </label> 
+                    </div>
+                    <div class="div_0p76jdM">
+                        <label class="label_2F1ZTtw">
+                            <span>Tema oscuro</span>
+                            <input type="radio" name="name_Dokrc6U2gbEtz29wg2" data-theme="dark">
+                        </label> 
+                    </div>
+                    <div class="div_0p76jdM">
+                        <label class="label_2F1ZTtw">
+                            <span>Tema sistema</span>
+                            <input type="radio" name="name_Dokrc6U2gbEtz29wg2" data-theme="system">
+                        </label> 
+                    </div>
+                    <div class="div_0p76jdM" style="display:none">
+                        <label class="label_2F1ZTtw">
+                            <span>Tema personalizado</span>
+                            <input type="radio" name="name_Dokrc6U2gbEtz29wg2" data-theme="custom">
+                        </label>
+                        <div class="div_VDMeCmA">
+                            <div class="div_QKKEgOu">
+                                <label class="label_2F1ZTtw">
+                                    <span>color Fondo</span>
+                                    <input type="color" data-color-custom="app-color-background">
+                                </label>
+                                <label class="label_2F1ZTtw">
+                                    <span>color Fondo secundario</span>
+                                    <input type="color" data-color-custom="app-color-background-second">
+                                </label>
+                                <label class="label_2F1ZTtw" >
+                                    <span>color de items</span>
+                                    <input type="color" data-color-custom="app-color-item">
+                                </label>
+                                <label class="label_2F1ZTtw">
+                                    <span>color de items secundario</span>
+                                    <input type="color" data-color-custom="app-color-item-second">
+                                </label>
+                                <label class="label_2F1ZTtw">
+                                    <span>color de items tercero</span>
+                                    <input type="color" data-color-custom="app-color-item-third">
+                                </label>
+                                <label class="label_2F1ZTtw">
+                                    <span>color de letras</span>
+                                    <input type="color" data-color-custom="app-color-letter">
+                                </label>
+                                <label class="label_2F1ZTtw">
+                                    <span>color de letras secundario</span>
+                                    <input type="color" data-color-custom="app-color-letter-second">
+                                </label>
+                            </div>
+                        </div> 
+                    </div>
+                </div>
+               
+            </div>
+        </div>
+    `);
+
+  $element.querySelectorAll("[data-theme]").forEach((element) => {
+    element.addEventListener("change", () => {
+      const theme = ((theme) => {
+        if (theme == "light") return useThis.themes.light;
+        if (theme == "dark") return useThis.themes.dark;
+        if (theme == "system") {
+          if (window.matchMedia("(prefers-color-scheme: light)").matches) {
+            return useThis.themes.light;
+          }
+
+          if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+            return useThis.themes.dark;
+          }
+        }
+
+        return useThis.themes.light;
+      })(element.getAttribute("data-theme"));
+
+      Object.entries(theme).forEach((entries) => {
+        document.documentElement.style.setProperty(entries[0], entries[1]);
+      });
+
+      useApp.elements.meta.color.setAttribute(
+        "content",
+        theme["--app-color-background"]
+      );
+
+      localStorage.setItem("theme", element.getAttribute("data-theme"));
+    });
+
+    if (localStorage.getItem("theme") == element.getAttribute("data-theme")) {
+      element.checked = true;
+      element.dispatchEvent(new CustomEvent("change"));
+    }
+  });
+
+  window
+    .matchMedia("(prefers-color-scheme: light)")
+    .addEventListener("change", (e) => {
+      if (localStorage.getItem("theme") == "system") {
+        const theme = e.matches ? useThis.themes.light : useThis.themes.dark;
+
+        Object.entries(theme).forEach((entries) => {
+          document.documentElement.style.setProperty(entries[0], entries[1]);
+        });
+
+        useApp.elements.meta.color.setAttribute(
+          "content",
+          theme["--app-color-background"]
+        );
+      }
+    });
+
+  //   $element.querySelectorAll("[data-color-custom]").forEach((element) => {
+  //     element.value =
+  //       useThis.values.themeCustom?.[element.getAttribute("data-color-custom")];
+  //     element.addEventListener("change", () => {
+  //       const themeCustom = JSON.parse(localStorage.getItem("theme-custom"));
+  //       themeCustom[element.getAttribute("data-color-custom")] = element.value;
+  //       localStorage.setItem("theme-custom", JSON.stringify(themeCustom));
+
+  //       dispatchEvent(useApp.values.customEvents._theme);
+  //     });
+  //   });
+
+  return $element;
+};
+
+var setting = () => {
+  const useApp = window.dataApp;
+
+  const $element = useApp.MyFunction.createNodeElement(`
+      <div class="div_Xu02Xjh">
+          <header class="header_K0hs3I0">
+
+              <div class="div_uNg74XS">
+                  <a href="#/" class="button_lvV6qZu">
+                    ${useApp.svgIcon("fi fi-rr-angle-small-left")}
+                  </a>
+                  <h3 id="textTitle">Configuracion</h3>
+              </div>
+
+          </header>
+          <div class="div_guZ6yID" style="padding:10px;">
+            <div class="div_gVQO1KR">
+                <div class="div_cq16fYP">
+                  <a 
+                  href="#/profile"
+                  class="app-style-var d-flex-center-y" style="--pd:10px; --g:10px; --h:60px;">
+                    <small class="app-square-var d-flex-center">
+                      ${useApp.svgIcon("fi fi-rr-user")}
+                    </small>
+                    <span>Cuenta</span>
+                  </a>
+                  <a href="#/theme" class="app-style-var d-flex-center-y" style="--pd:10px; --g:10px; --h:60px;">
+                    <small class="app-square-var d-flex-center">
+                      ${useApp.svgIcon("fi fi-rr-palette")}
+                    </small>
+                    <span>Tema</span>
+                  </a>
+                </div>
+            </div>
+          </div>
+      </div>  
+    `);
+
+  return $element;
+};
+
 var routes = () => {
   const useApp = window.dataApp;
   const useThis = {
@@ -4535,6 +4771,7 @@ var routes = () => {
     },
     elements: {
       inicio: inicio(),
+      theme: theme(),
     },
   };
 
@@ -4556,6 +4793,8 @@ var routes = () => {
 
     { hash: "/favorite", callback: () => routesPrivate(favoritos) },
     { hash: "/historial", callback: () => routesPrivate(historial) },
+    { hash: "/theme", callback: () => useThis.elements.theme },
+    { hash: "/setting", callback: setting },
   ]);
 
   if (history.length <= 2 || history.state == null) {
@@ -5036,5 +5275,5 @@ addEventListener("DOMContentLoaded", () => {
   // theme();
 
   dispatchEvent(new CustomEvent("hashchange"));
-  dispatchEvent(new CustomEvent("_theme"));
+  // dispatchEvent(new CustomEvent("_theme"));
 });
